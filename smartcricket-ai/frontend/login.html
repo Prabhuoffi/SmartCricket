@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Sign in</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+  <link rel="stylesheet" href="css/login.css?v=48">
+</head>
+<body class="login-page">
+  <div class="auth-wrap">
+    <section class="hero">
+      <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="beam l"></div><div class="beam r"></div><div class="grid-lines"></div>
+      <div id="hero-brand" class="brand" style="margin:0"></div>
+      <div id="big-ball"></div>
+      <div>
+        <span class="live reveal"><i></i>Live AI analysis</span>
+        <h1 class="reveal">See every <span class="red">stroke.</span><br><span class="outline">Understand</span><br>every angle.</h1>
+        <p class="lead reveal">Upload a photo or a clip of your batting. SmartCricket AI maps your body, measures your joints and explains it like a coach.</p>
+        <div class="features">
+          <div class="feature reveal"><div class="fi" id="f1"></div><div><b>33-point body tracking</b><span>Pose landmarks with visibility checks</span></div></div>
+          <div class="feature reveal"><div class="fi" id="f2"></div><div><b>Explainable shot analysis</b><span>Heatmaps and key frames, not just a label</span></div></div>
+          <div class="feature reveal"><div class="fi" id="f3"></div><div><b>AI virtual coach</b><span>Plain-language feedback grounded in your numbers</span></div></div>
+        </div>
+      </div>
+      <p class="small reveal" style="color:#7d8aa3;margin:0">M.E. Computer Science and Engineering · Final-year project</p>
+    </section>
+
+    <section class="auth-side">
+      <div class="auth-card reveal">
+        <a href="/" class="small" style="font-weight:600;display:inline-block;margin-bottom:18px">← Back to home</a>
+        <h1 id="heading">Welcome back</h1>
+        <p class="muted" id="sub" style="margin:6px 0 0">Sign in to continue to your analyses.</p>
+        <div class="seg" id="seg">
+          <div class="thumb-ind"></div>
+          <button type="button" id="tab-login" class="on">Sign in</button>
+          <button type="button" id="tab-register">Create account</button>
+        </div>
+        <form id="form" novalidate>
+          <div class="collapse" id="name-wrap"><div>
+            <div class="field"><input id="name" placeholder=" " autocomplete="name" maxlength="100"><label for="name">Full name</label></div>
+          </div></div>
+          <div class="field"><input id="email" type="email" placeholder=" " required autocomplete="email"><label for="email">Email address</label></div>
+          <div class="field"><input id="password" type="password" placeholder=" " required minlength="8" autocomplete="current-password"><label for="password">Password (8+ characters)</label></div>
+          <div id="error" style="margin-top:14px"></div>
+          <button id="submit" style="width:100%;margin-top:8px;padding:14px">Sign in ${""}</button>
+        </form>
+      </div>
+    </section>
+  </div>
+  <script src="js/api.js?v=48"></script>
+  <script>
+    const nextPage = safeNext(new URLSearchParams(location.search).get("next"));
+    // the next page must suit the role: a player is not sent to an admin page or the other way round
+    const afterLogin = () => (nextPage && isAdmin() === ADMIN_PAGES.includes(nextPage.split("?")[0]) ? nextPage : homePage());
+    if (getToken()) location.replace(afterLogin());
+    // message after signing out or when the session expired
+    {
+      const q = new URLSearchParams(location.search);
+      const msg = q.has("signedout") ? ["info", "You've signed out. See you at the nets!"] :
+                  q.has("expired") ? ["warn", "Your session has expired. Please sign in again."] : null;
+      if (msg) {
+        addEventListener("DOMContentLoaded", () => { document.getElementById("error").innerHTML = alertHtml(msg[0], msg[1]); });
+        const keep = new URLSearchParams(); if (q.get("mode") === "register") keep.set("mode", "register"); if (q.get("next")) keep.set("next", q.get("next"));
+        history.replaceState(null, "", location.pathname + (keep.toString() ? "?" + keep : ""));
+      }
+    }
+    const $ = id => document.getElementById(id);
+    $("hero-brand").innerHTML = '<a href="/" style="display:flex;align-items:center;gap:10px;color:inherit">' + BALL + '<div><b>SmartCricket AI</b><small>Batting analysis &amp; coaching</small></div></a>';
+    $("big-ball").innerHTML = BALL.replace('class="ball"', 'class="big-ball"').replace(/bg1/g, "bg2");
+    $("f1").innerHTML = icon("body"); $("f2").innerHTML = icon("spark"); $("f3").innerHTML = icon("chat");
+    $("submit").innerHTML = `Sign in ${icon("arrow")}`;
+    revealAll();
+
+    let mode = "login";
+    function setMode(m) {
+      mode = m;
+      $("seg").classList.toggle("reg", m === "register");
+      $("tab-login").classList.toggle("on", m === "login");
+      $("tab-register").classList.toggle("on", m === "register");
+      $("name-wrap").classList.toggle("open", m === "register");
+      $("heading").textContent = m === "login" ? "Welcome back" : "Create your account";
+      $("sub").textContent = m === "login" ? "Sign in to continue to your analyses." : "It takes less than a minute.";
+      $("submit").innerHTML = `${m === "login" ? "Sign in" : "Create account"} ${icon("arrow")}`;
+      $("password").autocomplete = m === "login" ? "current-password" : "new-password";
+      $("error").innerHTML = "";
+    }
+    $("tab-login").onclick = () => setMode("login");
+    $("tab-register").onclick = () => setMode("register");
+
+    if (new URLSearchParams(location.search).get("mode") === "register") setMode("register");
+
+    $("form").onsubmit = async e => {
+      e.preventDefault();
+      const email = $("email").value.trim(), password = $("password").value, name = $("name").value.trim();
+      if (mode === "register" && !name) return ($("error").innerHTML = alertHtml("error", "Please enter your name."));
+      if (!/^\S+@\S+\.\S+$/.test(email)) return ($("error").innerHTML = alertHtml("error", "Please enter a valid email address."));
+      if (password.length < 8) return ($("error").innerHTML = alertHtml("error", "Password needs at least 8 characters."));
+      const btn = $("submit");
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Please wait';
+      $("error").innerHTML = "";
+      try {
+        const res = await fetch(`/api/auth/${mode}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(mode === "register" ? { name, email, password } : { email, password }),
+        });
+        const j = await res.json();
+        if (!res.ok) throw new Error(typeof j.detail === "string" ? j.detail : "Please use a real email address and a password of at least 8 characters.");
+        saveSession(j.token, j.name, j.role);
+        btn.innerHTML = `${icon("check")} Welcome, ${esc(j.name.split(" ")[0])}`;
+        go(afterLogin());
+      } catch (err) {
+        $("error").innerHTML = alertHtml("error", err.message);
+        btn.disabled = false;
+        btn.innerHTML = `${mode === "login" ? "Sign in" : "Create account"} ${icon("arrow")}`;
+      }
+    };
+  </script>
+</body>
+</html>

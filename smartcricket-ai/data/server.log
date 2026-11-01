@@ -1,0 +1,464 @@
+INFO:     Will watch for changes in these directories: ['/Users/prabhu/Desktop/SmartCricket/smartcricket-ai/backend']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [28245] using WatchFiles
+INFO:     Started server process [28256]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:61449 - "GET /api/health HTTP/1.1" 200 OK
+2026-10-31 21:37:02,360 INFO httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:61452 - "POST /api/coach/39 HTTP/1.1" 200 OK
+I0000 00:00:1793463236.153482  457686 init-domain.cc:133] Fiber init: default domain = pthread, concurrency = 11, prefix = pthread-default
+INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+W0000 00:00:1793463236.186250  457690 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1793463236.198578  457693 inference_feedback_manager.cc:121] Feedback manager requires a model with a single signature inference. Disabling support for feedback tensors.
+W0000 00:00:1793463236.219663  457689 landmark_projection_calculator.cc:81] Using NORM_RECT without IMAGE_DIMENSIONS is only supported for the square ROI. Provide IMAGE_DIMENSIONS or use PROJECTION_MATRIX.
+INFO:     127.0.0.1:61521 - "POST /api/image/analyse HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61613 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61615 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61621 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61623 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61615 - "GET /app/dashboard.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61627 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61625 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61613 - "GET /app/video.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61615 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61619 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61627 - "GET /app/clip.html?id=39 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61621 - "GET /app/training.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61623 - "GET /app/login.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61625 - "GET /app/analysis.html?id=43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61617 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61613 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61627 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61633 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61631 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61637 - "GET /app/js/coach.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61621 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61625 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61623 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61642 - "GET /app/js/coach.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61635 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61629 - "GET /app/css/login.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61643 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61666 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61673 - "GET /api/analyses/39 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61672 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61617 - "GET /api/video/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61676 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61701 - "GET /api/analyses/43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61688 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61678 - "GET /api/train/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61673 - "GET /api/files/39/heat/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61672 - "GET /api/files/39/heat/0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61613 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61700 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61707 - "GET /api/files/39/heat/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61709 - "GET /api/files/39/heat/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61717 - "GET /api/files/43/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61711 - "GET /api/files/39/heat/4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61712 - "GET /api/files/39/heat/5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61701 - "GET /api/files/43/original HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61668 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61672 - "GET /api/files/39/heat/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61673 - "GET /api/files/39/heat/7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61707 - "GET /api/files/39/heat/8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61712 - "GET /api/files/39/heat/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61709 - "GET /api/files/39/heat/10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61668 - "GET /api/files/43/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61711 - "GET /api/files/39/heat/11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61673 - "GET /api/files/39/heat/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61672 - "GET /api/files/39/heat/12 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61666 - "GET /api/files/41/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61688 - "GET /api/files/42/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61721 - "GET /api/files/40/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61707 - "GET /api/files/39/heat/14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61712 - "GET /api/files/39/frame/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61709 - "GET /api/files/39/frame/0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61672 - "GET /api/files/39/frame/4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61673 - "GET /api/files/39/frame/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61711 - "GET /api/files/39/frame/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61712 - "GET /api/files/39/frame/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61707 - "GET /api/files/39/frame/5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61709 - "GET /api/files/39/frame/7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61673 - "GET /api/files/39/frame/8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61678 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61724 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61672 - "GET /api/files/39/frame/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61711 - "GET /api/files/39/frame/10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61672 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61707 - "GET /api/files/39/frame/11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61712 - "GET /api/files/39/frame/12 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61673 - "GET /api/files/39/frame/14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61709 - "GET /api/files/39/frame/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61709 - "GET /api/references HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61701 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61800 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61810 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61806 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61821 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61806 - "GET /app/history.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61806 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61819 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61800 - "GET /app/models.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61810 - "GET /app/progress.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61821 - "GET /app/players.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61810 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61812 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61808 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61800 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61825 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61823 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61821 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61836 - "GET /app/admin.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61836 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61839 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61849 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61853 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61850 - "GET /api/train/progress HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61854 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61871 - "GET /api/files/41/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61854 - "GET /api/files/43/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61873 - "GET /api/files/40/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61853 - "GET /api/files/42/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61866 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61875 - "GET /api/files/37/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61874 - "GET /api/files/39/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61871 - "GET /api/files/36/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61873 - "GET /api/files/35/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61853 - "GET /api/files/34/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61875 - "GET /api/files/33/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61874 - "GET /api/files/32/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61879 - "GET /api/admin/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61871 - "GET /api/files/31/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61836 - "GET /api/admin/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61854 - "GET /api/files/24/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61873 - "GET /api/files/25/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61853 - "GET /api/files/23/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61875 - "GET /api/files/22/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61874 - "GET /api/files/12/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61871 - "GET /api/files/11/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61873 - "GET /api/files/9/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61854 - "GET /api/files/10/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61853 - "GET /api/files/8/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61875 - "GET /api/files/7/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61874 - "GET /api/files/4/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61871 - "GET /api/files/3/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61873 - "GET /api/files/2/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61854 - "GET /api/files/1/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61854 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61836 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+2026-10-31 21:44:16,045 INFO httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:61850 - "POST /api/train/week/summary?offset=0&refresh=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61900 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61909 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61909 - "GET /app/css/landing.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61911 - "GET /app/img/demo-batter.jpg HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61913 - "GET /app/js/demo-pose.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61909 - "GET /app/js/landing-fx.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61929 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61938 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61938 - "GET /app/_live.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61938 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61939 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61969 - "GET /api/lan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61968 - "GET /api/references HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61970 - "GET /api/video/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61964 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61964 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61980 - "GET /api/references/5/pose HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /app/progress.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62105 - "GET /app/css/style.css?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62107 - "GET /app/js/api.js?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62107 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /api/train/progress HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "POST /api/train/week/summary?offset=0&refresh=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /app/dashboard.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62105 - "GET /app/css/style.css?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62107 - "GET /app/js/api.js?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62107 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/files/43/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62107 - "GET /api/files/42/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /api/files/41/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62109 - "GET /api/files/40/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62109 - "GET /app/progress.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62109 - "GET /app/css/style.css?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62105 - "GET /app/js/api.js?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62105 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62109 - "GET /api/train/progress HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62109 - "POST /api/train/week/summary?offset=0&refresh=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62109 - "GET /app/video.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62109 - "GET /app/css/style.css?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62105 - "GET /app/js/api.js?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62109 - "GET /api/video/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /app/image.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62109 - "GET /app/js/api.js?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62105 - "GET /app/css/style.css?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62105 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /app/history.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62105 - "GET /app/css/style.css?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62109 - "GET /app/js/api.js?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62109 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /api/files/39/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /app/progress.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62105 - "GET /app/css/style.css?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62109 - "GET /app/js/api.js?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62109 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /api/train/progress HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "POST /api/train/week/summary?offset=0&refresh=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /app/training.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /app/css/style.css?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62109 - "GET /app/js/api.js?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62109 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /api/train/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /app/dashboard.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62109 - "GET /app/js/api.js?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62105 - "GET /app/css/style.css?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62105 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62109 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62105 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62115 - "GET /app/clip.html?id=41 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62115 - "GET /app/css/style.css?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62122 - "GET /app/js/api.js?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62123 - "GET /app/js/coach.js?v=48 HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:62122 - "GET /api/analyses/41 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62123 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62122 - "GET /api/files/41/heat/0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62127 - "GET /api/files/41/heat/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62128 - "GET /api/files/41/heat/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62123 - "GET /api/files/41/heat/5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62115 - "GET /api/files/41/heat/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62129 - "GET /api/files/41/heat/4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62127 - "GET /api/files/41/heat/7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62115 - "GET /api/files/41/heat/8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62123 - "GET /api/files/41/heat/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62128 - "GET /api/files/41/heat/10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62122 - "GET /api/files/41/heat/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62129 - "GET /api/files/41/heat/11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62127 - "GET /api/files/41/heat/12 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62115 - "GET /api/files/41/heat/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62128 - "GET /api/files/41/heat/14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62129 - "GET /api/files/41/frame/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62122 - "GET /api/files/41/frame/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62123 - "GET /api/files/41/frame/0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62115 - "GET /api/files/41/frame/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62127 - "GET /api/files/41/frame/4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62128 - "GET /api/files/41/frame/5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62122 - "GET /api/files/41/frame/7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62129 - "GET /api/files/41/frame/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62123 - "GET /api/files/41/frame/8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62115 - "GET /api/files/41/frame/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62128 - "GET /api/files/41/frame/11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62127 - "GET /api/files/41/frame/10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62122 - "GET /api/files/41/frame/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62129 - "GET /api/files/41/frame/12 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62123 - "GET /api/files/41/frame/14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62123 - "GET /api/references HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62260 - "GET /api/health HTTP/1.1" 200 OK
+2026-10-31 22:07:57,731 INFO httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:62266 - "POST /api/coach/39 HTTP/1.1" 200 OK
+2026-10-31 22:08:08,926 INFO httpx: HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:62269 - "POST /api/train/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62279 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62286 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62283 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62294 - "GET /app/progress.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62294 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62306 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62323 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62286 - "GET /app/analysis.html?id=43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62319 - "GET /app/clip.html?id=39 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62286 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62287 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62342 - "GET /app/js/coach.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62343 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62346 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62347 - "GET /app/js/coach.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62360 - "GET /app/training.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62360 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62365 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62379 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62381 - "GET /api/train/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62410 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62415 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62394 - "GET /api/analyses/39 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62385 - "GET /api/train/progress HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62384 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62401 - "GET /api/analyses/43 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62400 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62393 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62384 - "POST /api/train/week/summary?offset=0&refresh=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62430 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62394 - "GET /api/files/39/heat/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62424 - "GET /api/files/39/heat/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62425 - "GET /api/files/39/heat/4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62393 - "GET /api/files/39/heat/0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62415 - "GET /api/files/39/heat/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62426 - "GET /api/files/39/heat/5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62401 - "GET /api/files/43/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62400 - "GET /api/files/43/original HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62393 - "GET /api/files/39/heat/7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62394 - "GET /api/files/39/heat/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62425 - "GET /api/files/39/heat/8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62393 - "GET /api/files/39/heat/12 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62424 - "GET /api/files/39/heat/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62426 - "GET /api/files/39/heat/11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62425 - "GET /api/files/39/heat/14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62394 - "GET /api/files/39/heat/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62426 - "GET /api/files/39/frame/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62425 - "GET /api/files/39/frame/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62415 - "GET /api/files/39/heat/10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62424 - "GET /api/files/39/frame/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62393 - "GET /api/files/39/frame/0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62394 - "GET /api/files/39/frame/4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62426 - "GET /api/files/39/frame/5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62415 - "GET /api/files/39/frame/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62394 - "GET /api/files/39/frame/10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62393 - "GET /api/files/39/frame/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62424 - "GET /api/files/39/frame/8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62425 - "GET /api/files/39/frame/7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62426 - "GET /api/files/39/frame/12 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62415 - "GET /api/files/39/frame/11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62394 - "GET /api/files/39/frame/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62393 - "GET /api/files/39/frame/14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62381 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62393 - "GET /api/references HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62475 - "POST /api/video/39/compare HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62480 - "GET /api/references/6/frame/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62484 - "GET /api/references/6/frame/4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62482 - "GET /api/references/6/frame/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62475 - "GET /api/references/6/frame/0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62478 - "GET /api/references/6/frame/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62485 - "GET /api/references/6/frame/5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62480 - "GET /api/references/6/frame/7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62475 - "GET /api/references/6/frame/8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62484 - "GET /api/references/6/frame/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62485 - "GET /api/references/6/frame/11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62482 - "GET /api/references/6/frame/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62480 - "GET /api/references/6/frame/12 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62475 - "GET /api/references/6/frame/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62478 - "GET /api/references/6/frame/10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62484 - "GET /api/references/6/frame/14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62492 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62493 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62502 - "GET /app/history.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62512 - "GET /app/players.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62502 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62514 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62518 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62512 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62541 - "GET /api/admin/overview HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62546 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62548 - "GET /api/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62548 - "GET /api/files/43/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62558 - "GET /api/files/39/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62546 - "GET /api/files/42/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62555 - "GET /api/files/41/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62557 - "GET /api/files/40/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62559 - "GET /api/files/37/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62557 - "GET /api/files/33/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62558 - "GET /api/files/35/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62546 - "GET /api/files/36/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62559 - "GET /api/files/32/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62555 - "GET /api/files/34/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62548 - "GET /api/files/31/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62557 - "GET /api/files/25/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62559 - "GET /api/files/23/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62555 - "GET /api/files/12/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62548 - "GET /api/files/11/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62546 - "GET /api/files/24/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62558 - "GET /api/files/22/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62557 - "GET /api/files/10/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62546 - "GET /api/files/7/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62559 - "GET /api/files/8/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62555 - "GET /api/files/9/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62558 - "GET /api/files/4/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62548 - "GET /api/files/3/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62557 - "GET /api/files/2/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62555 - "GET /api/files/1/output HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62541 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62555 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62590 - "POST /api/lan/start HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62608 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62608 - "GET /app/live.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62608 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62609 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62631 - "GET /api/video/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62630 - "GET /api/lan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62628 - "GET /api/references HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62628 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62625 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62652 - "POST /api/lan/stop HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62654 - "GET /api/reports/39/pdf HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62664 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62680 - "GET /app/_shot.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62672 - "GET /app/clip.html?id=39 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62672 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62689 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62690 - "GET /app/js/coach.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62680 - "GET /app/live.html HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62680 - "GET /app/css/style.css?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62682 - "GET /app/js/api.js?v=48 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62719 - "GET /api/analyses/39 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62718 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62726 - "GET /api/files/39/heat/4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62723 - "GET /api/files/39/heat/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62719 - "GET /api/files/39/heat/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62725 - "GET /api/files/39/heat/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62718 - "GET /api/files/39/heat/0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62728 - "GET /api/files/39/heat/5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62719 - "GET /api/files/39/heat/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62726 - "GET /api/files/39/heat/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62723 - "GET /api/files/39/heat/7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62718 - "GET /api/files/39/heat/8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62725 - "GET /api/files/39/heat/10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62728 - "GET /api/files/39/heat/11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62718 - "GET /api/files/39/heat/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62723 - "GET /api/files/39/heat/14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62719 - "GET /api/files/39/heat/12 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62728 - "GET /api/files/39/frame/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62725 - "GET /api/files/39/frame/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62726 - "GET /api/files/39/frame/0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62718 - "GET /api/files/39/frame/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62723 - "GET /api/files/39/frame/4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62719 - "GET /api/files/39/frame/5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62728 - "GET /api/files/39/frame/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62725 - "GET /api/files/39/frame/7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62726 - "GET /api/files/39/frame/8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62718 - "GET /api/files/39/frame/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62719 - "GET /api/files/39/frame/10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62723 - "GET /api/files/39/frame/11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62728 - "GET /api/files/39/frame/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62725 - "GET /api/files/39/frame/12 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62726 - "GET /api/files/39/frame/14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62728 - "GET /api/references/6/frame/1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62723 - "GET /api/references/6/frame/2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62726 - "GET /api/references HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62718 - "GET /api/references/6/frame/4 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62719 - "GET /api/references/6/frame/3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62725 - "GET /api/references/6/frame/0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62726 - "GET /api/references/6/frame/6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62719 - "GET /api/references/6/frame/9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62718 - "GET /api/references/6/frame/8 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62728 - "GET /api/references/6/frame/5 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62723 - "GET /api/references/6/frame/7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62725 - "GET /api/references/6/frame/10 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62726 - "GET /api/references/6/frame/11 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62719 - "GET /api/references/6/frame/12 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62718 - "GET /api/references/6/frame/13 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62728 - "GET /api/references/6/frame/14 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62750 - "GET /api/lan HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62748 - "GET /api/references HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62751 - "GET /api/video/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62751 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62745 - "GET /api/train/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62718 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62774 - "GET /api/references/5/pose HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [28256]
+INFO:     Stopping reloader process [28245]

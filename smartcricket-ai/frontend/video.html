@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Video analysis</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <div class="page-head">
+        <div class="reveal"><h1>Video analysis</h1>
+          <p class="muted">Upload a short clip of one batting stroke. Your body is tracked in 15 frames, so you see your skeleton,
+            how each joint moved through the shot and where you moved most.</p></div>
+      </div>
+
+      <div id="loading" class="card"><div class="skeleton" style="height:180px"></div></div>
+
+      <!-- upload -->
+      <div id="pick" hidden>
+        <div class="card reveal" style="padding:18px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+            <div><b>Model</b><div class="faint small" id="model-help"></div></div>
+            <div class="toggle" id="models"></div>
+          </div>
+          <div id="mode-note"></div>
+          <label class="dropzone" id="drop" for="file">
+            <input type="file" id="file" accept="video/mp4,video/quicktime,video/x-msvideo,.mp4,.mov,.avi">
+            <div class="up-ico" id="up-ico"></div>
+            <b>Drop a batting clip here</b>
+            <p class="muted" style="margin:6px 0 0">or <span style="color:var(--brand);font-weight:600">browse your files</span> · MP4, MOV or AVI up to 50 MB · one stroke (1 to 3 s), or a whole nets video: each shot is found and analysed separately</p>
+          </label>
+          <input class="plain" id="session" placeholder="Session label (optional), e.g. Nets 30 Oct" maxlength="100" style="margin-top:14px">
+          <div id="msg" style="margin-top:14px"></div>
+        </div>
+        <div class="grid kpis reveal" style="margin-top:18px" id="tips"></div>
+      </div>
+
+      <!-- processing -->
+      <div class="scan-stage" id="stage">
+        <div class="scan-frame"><video id="preview" muted loop playsinline autoplay></video><div class="tint"></div><div class="laser"></div></div>
+        <div class="card">
+          <h2>Analysing your clip</h2>
+          <ul class="steps" id="steps">
+            <li data-s="0"><span class="st"></span>Uploading clip</li>
+            <li data-s="1"><span class="st"></span>Sampling 15 frames</li>
+            <li data-s="2"><span class="st"></span>Tracking body pose</li>
+            <li data-s="3"><span class="st" ></span><span id="step3">Recognising the shot</span></li>
+            <li data-s="4"><span class="st"></span><span id="step4">Building heatmaps</span></li>
+          </ul>
+          <div class="bar"><div id="bar"></div></div>
+          <p class="faint small" id="pct" style="margin:8px 0 0">0%</p>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js?v=48"></script>
+  <script>
+    requireLogin();
+    sidebar("video.html");
+    const $ = id => document.getElementById(id);
+    const MAX_MB = 50, OK_TYPES = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/avi"];
+    const HELP = { fusion: "Video + pose: uses the picture and your body movement", video: "Video only: the published CricShotNet design",
+                   pose: "Pose only: body movement alone, fastest", fusion3d: "Video + 3D pose: the picture with view-independent 3D body angles",
+                   pose3d: "3D pose only: body movement in 3D, does not depend on the camera angle",
+                   movement: "Movement analysis: skeleton, joint angles over time and the frame where you moved most" };
+    let model = null;
+
+    $("up-ico").innerHTML = icon("video");
+    $("tips").innerHTML = [
+      ["video", "tone-blue", "One stroke per clip", "Trim to the shot itself, from back-lift to follow-through."],
+      ["camera", "tone-green", "Steady camera", "Side-on or from behind the bowler, like broadcast footage."],
+      ["body", "tone-gold", "Batter in view", "The whole body should be visible for pose tracking."],
+    ].map(([ic, tone, t, d]) => `<div class="card kpi ${tone}" style="padding:18px"><div class="ico" style="margin-bottom:10px">${icon(ic)}</div><b>${t}</b><p class="muted small" style="margin:4px 0 0">${d}</p></div>`).join("");
+    document.querySelectorAll(".steps .st").forEach(s => (s.innerHTML = icon("check")));
+
+    (async () => {
+      const st = await api("/api/video/status");
+      $("loading").remove();
+      $("pick").hidden = false;
+      if (!st.shot_models) {
+        $("mode-note").innerHTML = `<div class="mode-note">${icon("info")}<div><b>Movement analysis</b> is ready now: your skeleton on every frame,
+          joint angles through the shot, the frame where you moved most, and comparison with reference clips.
+          <span class="faint">The shot name and heatmaps are added once the shot models finish training.</span></div></div>`;
+      }
+      $("models").innerHTML = st.models.map(m => `<button type="button" data-k="${m.kind}">${esc(m.label)}</button>`).join("");
+      const pickModel = k => {
+        model = k;
+        const mv = k === "movement";
+        $("step3").textContent = mv ? "Measuring joint angles" : "Recognising the shot";
+        $("step4").textContent = mv ? "Drawing your skeleton" : "Building heatmaps";
+        $("models").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.k === k));
+        $("model-help").textContent = HELP[k] || "";
+      };
+      $("models").querySelectorAll("button").forEach(b => (b.onclick = () => pickModel(b.dataset.k)));
+      pickModel(st.default);
+      revealAll();
+    })().catch(e => toast(e.message, "error"));
+
+    const drop = $("drop");
+    ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+    ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, () => drop.classList.remove("over")));
+    drop.addEventListener("drop", e => { e.preventDefault(); if (e.dataTransfer.files[0]) start(e.dataTransfer.files[0]); });
+    $("file").onchange = () => $("file").files[0] && start($("file").files[0]);
+
+    function setStep(n) {
+      document.querySelectorAll("#steps li").forEach(li => {
+        const s = +li.dataset.s;
+        li.className = s < n ? "done" : s === n ? "active" : "";
+      });
+    }
+    const setPct = p => { $("bar").style.width = p + "%"; $("pct").textContent = Math.round(p) + "%"; };
+
+    function start(file) {
+      $("msg").innerHTML = "";
+      const ext = file.name.split(".").pop().toLowerCase();
+      if (!OK_TYPES.includes(file.type) && !["mp4", "mov", "avi"].includes(ext))
+        return ($("msg").innerHTML = alertHtml("error", "Only MP4, MOV or AVI videos are allowed."));
+      if (file.size > MAX_MB * 1024 * 1024) return ($("msg").innerHTML = alertHtml("error", `This file is larger than ${MAX_MB} MB.`));
+
+      $("preview").src = URL.createObjectURL(file);
+      $("pick").hidden = true;
+      $("stage").classList.add("on");
+      setStep(0); setPct(0);
+
+      const form = new FormData();
+      form.append("file", file);
+      form.append("model", model);
+      const label = $("session").value.trim();
+      if (label) form.append("session_label", label);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/video/analyse");
+      xhr.setRequestHeader("Authorization", `Bearer ${getToken()}`);
+      let timer;
+      xhr.upload.onprogress = e => { if (e.lengthComputable) setPct((e.loaded / e.total) * 30); };
+      xhr.upload.onload = () => {
+        // Server steps are not streamed: move the indicator gently until the answer arrives.
+        let p = 30;
+        setStep(1);
+        timer = setInterval(() => {
+          p = Math.min(94, p + (94 - p) * 0.05);
+          setPct(p);
+          setStep(p < 45 ? 1 : p < 62 ? 2 : p < 80 ? 3 : 4);
+        }, 150);
+      };
+      xhr.onload = () => {
+        clearInterval(timer);
+        let j = {};
+        try { j = JSON.parse(xhr.responseText); } catch {}
+        if (xhr.status === 401) return signOut();
+        if (xhr.status !== 200) return fail(typeof j.detail === "string" ? j.detail : "Analysis failed, please try again.");
+        setStep(5); setPct(100);
+        if (j.multi) return showShots(j);
+        setTimeout(() => go(`clip.html?id=${j.id}`), reduceMotion ? 0 : 600);
+      };
+      xhr.onerror = () => { clearInterval(timer); fail("Network error, please try again."); };
+      xhr.send(form);
+    }
+
+    // A long practice video comes back as several shots: list them, each linking to its own result.
+    function showShots(j) {
+      $("stage").classList.remove("on");
+      $("pick").hidden = false; $("file").value = "";
+      const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+      $("msg").innerHTML = `<div class="shots-found">
+        <div class="sf-head">${icon("check")}<div><b>Found ${j.count} shot${j.count === 1 ? "" : "s"} in your ${j.duration_s} s video</b>
+          <small>Each shot was cut out and analysed on its own. Open any of them:</small></div></div>
+        <div class="sf-list">${j.analyses.map((a, k) => `<a class="sf-item" href="clip.html?id=${a.id}">
+          <span class="sf-n">${k + 1}</span><div><b>Shot ${k + 1}</b><small>at ${fmt(j.shots[k].peak_s)} · body tracked ${a.summary.tracked_frames ?? "–"}/15</small></div>
+          <span class="chip info">${esc(a.shot || "Movement")}</span>${icon("arrow")}</a>`).join("")}</div></div>`;
+      toast(`Found ${j.count} shots`, "ok");
+    }
+
+    function fail(msg) {
+      $("stage").classList.remove("on");
+      $("pick").hidden = false;
+      $("file").value = "";
+      $("msg").innerHTML = alertHtml("error", msg);
+      toast(msg, "error");
+    }
+  </script>
+</body>
+</html>

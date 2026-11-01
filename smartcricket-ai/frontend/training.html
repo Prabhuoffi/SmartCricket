@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Training</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <div class="page-head">
+        <div class="reveal">
+          <p class="muted small" id="today" style="margin:0 0 4px"></p>
+          <h1>Today's training</h1>
+          <p class="muted">Your AI Coach builds three drills a day from your own photos and clips.</p>
+        </div>
+        <div class="reveal" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <a class="btn ghost" href="live.html" id="live-free"></a>
+          <span class="chip info" id="diff-chip"></span>
+        </div>
+      </div>
+
+      <!-- level strip -->
+      <section class="train-hero reveal" id="hero"></section>
+
+      <div class="grid split" style="margin-top:18px">
+        <!-- plan -->
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">Daily plan</span><h2>Your drills</h2></div>
+            <span class="plan-count" id="plan-count"></span></div>
+          <p class="muted small" id="diff-why" style="margin:-6px 0 14px"></p>
+          <div class="drills" id="drills"></div>
+          <p class="faint small" style="margin:14px 0 0">Drills are picked from 2D angle estimates. They are practice suggestions, not a judgement of your technique.</p>
+        </div>
+
+        <!-- coach -->
+        <div class="card reveal coach-card">
+          <div id="coach-head"></div>
+          <div class="chat feed-chat" id="feed"></div>
+          <form class="chat-form" id="chat-form">
+            <input class="plain" id="q" placeholder="Ask about your training…" maxlength="500" autocomplete="off">
+            <button id="send" aria-label="Send"></button>
+          </form>
+        </div>
+      </div>
+
+      <!-- quiz -->
+      <div class="card reveal quiz-card" style="margin-top:18px">
+        <div class="card-head"><div><span class="eyebrow-s">Question of the day</span><h2 id="quiz-q"></h2></div>
+          <span class="chip ok" id="quiz-xp">+10 XP</span></div>
+        <div class="quiz-opts" id="quiz-opts"></div>
+        <div class="quiz-why" id="quiz-why" hidden></div>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js?v=48"></script>
+  <script>
+    requireLogin();
+    sidebar("training.html");
+    const $ = id => document.getElementById(id);
+    $("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+    $("send").innerHTML = icon("arrow");
+    $("live-free").innerHTML = `${icon("video")} Live mirror`;
+    $("coach-head").innerHTML = coachHeader("Today's training");
+    revealAll();
+    const first = (store.get(NAME_KEY) || "Player").split(" ")[0];
+    let T;  // today's payload
+    const LIVE = ["knee_bend", "hip_hinge", "level_shoulders", "high_backlift", "elbow_lead", "balance_hold"];   // counted live on live.html
+
+    // ------------------------------------------------------------ hero: level, XP, streak, today ring
+    function hero(st) {
+      const next = st.next;
+      const done = st.today.drills_done, total = st.today.drills_total || 3, pct = done / total;
+      $("hero").innerHTML = `
+        <div class="th-level"><span class="th-badge"><small>Level</small><b>${st.level}</b></span>
+          <div><span class="th-eyebrow">Current level</span><b class="th-name">${esc(st.level_name)}</b>
+            <div class="th-bar"><i style="width:${Math.round(st.progress * 100)}%"></i></div>
+            <small>${next ? `${Math.round(st.progress * 100)}% of the way to <b>L${next.level} ${esc(next.name)}</b>` : "Top level reached"}</small></div></div>
+        <div class="th-stat"><b data-n="${st.xp.total}">0</b><span>Total XP</span></div>
+        <div class="th-stat"><b data-n="${st.streak}">0</b><span>${icon("flame")} Day streak</span></div>
+        <div class="th-ring"><svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="34" class="r-bg"/><circle cx="40" cy="40" r="34" class="r-fg"
+            style="stroke-dasharray:${2 * Math.PI * 34};stroke-dashoffset:${2 * Math.PI * 34 * (1 - pct)}"/></svg>
+          <div><b>${done}/${total}</b><span>drills today</span></div></div>`;
+      $("hero").querySelectorAll("b[data-n]").forEach(b => countUp(b, +b.dataset.n));
+      $("plan-count").textContent = `${done} of ${total} done`;
+      $("plan-count").classList.toggle("all", done === total && total > 0);
+    }
+
+    // ------------------------------------------------------------ plan
+    function drills() {
+      $("diff-chip").innerHTML = `${icon("bolt")} ${T.rest_day ? "Rest day" : `${T.difficulty.label} level`}`;
+      $("diff-why").textContent = T.rest_day ? "Recovery comes first today." : T.difficulty.why;
+      $("drills").innerHTML = T.plan.map((d, i) => `
+        <div class="drill${d.done ? " done" : ""}${d.code === "rest" ? " rest" : ""}" data-id="${d.id}" style="animation-delay:${i * 90}ms">
+          <button class="tick" aria-label="Mark ${esc(d.title)} as ${d.done ? "not done" : "done"}" aria-pressed="${d.done}">${icon("check")}</button>
+          <div class="dr-body">
+            <div class="dr-top"><b>${esc(d.title)}</b><span class="dose">${esc(d.dose)}</span></div>
+            <p>${esc(d.how)}</p>
+            <small class="why">${icon("target")}${esc(d.reason)}</small>
+            ${LIVE.includes(d.code) && !d.done ? `<a class="dr-live" href="live.html?drill=${d.id}"><span class="rec"></span>Do it live with camera</a>` : ""}
+          </div></div>`).join("");
+      $("drills").querySelectorAll(".drill").forEach(el => el.querySelector(".tick").onclick = () => toggle(el));
+    }
+    async function toggle(el) {
+      const id = +el.dataset.id, d = T.plan.find(x => x.id === id), btn = el.querySelector(".tick");
+      btn.disabled = true;
+      try {
+        const r = await api(`/api/train/drills/${id}`, { method: "POST", body: { done: !d.done } });
+        d.done = r.done;
+        el.classList.toggle("done", d.done);
+        btn.setAttribute("aria-pressed", d.done);
+        if (d.done) xpFloat(btn, 15);
+        hero(r.status); refreshLevel(r.status);
+        if (r.level_up) celebrate(r.status.level, r.status.level_name);
+        else if (d.done && r.status.today.drills_done === r.status.today.drills_total) {
+          coachSay(`All ${r.status.today.drills_total} drills done today. Brilliant work, ${first}! Today goes green on your calendar.`);
+        }
+      } catch (e) { toast(e.message, "error"); }
+      btn.disabled = false;
+    }
+
+    // ------------------------------------------------------------ coach feed
+    const feed = $("feed");
+    function say(role, html, cls = "") {
+      const m = document.createElement("div");
+      m.className = `msg ${role} ${cls}`;
+      m.innerHTML = html;
+      feed.append(m);
+      feed.scrollTop = feed.scrollHeight;
+      return m;
+    }
+    const coachSay = text => say("coach", coachHtml(text));
+    const userSay = text => say("user", esc(text));
+    function choices(opts, onPick) {
+      const box = say("coach", "", "choices");
+      box.innerHTML = opts.map(([label]) => `<button type="button">${esc(label)}</button>`).join("");
+      box.querySelectorAll("button").forEach((b, i) => b.onclick = () => { box.remove(); userSay(opts[i][0]); onPick(opts[i][1]); });
+    }
+    function typing() { return say("coach", "<i></i><i></i><i></i>", "typing"); }
+    const later = (fn, ms = 550) => setTimeout(fn, reduceMotion ? 0 : ms);
+
+    function checkinFlow() {
+      coachSay(`${greeting()}, ${first}! Before we train, three quick questions.`);
+      const ans = {};
+      later(() => {
+        coachSay("How many balls did you face yesterday?");
+        const box = say("coach", `<form class="balls"><input class="plain" type="number" min="0" max="2000" placeholder="e.g. 60" aria-label="Balls faced yesterday">
+          <button>Next</button></form><button type="button" class="ghost none">I didn't bat</button>`, "choices");
+        const next = v => { box.remove(); userSay(v === 0 ? "I didn't bat" : `${v} balls`); ans.balls_faced = v; later(soreness); };
+        box.querySelector("form").onsubmit = e => {
+          e.preventDefault();
+          const v = parseInt(box.querySelector("input").value, 10);
+          if (isNaN(v) || v < 0 || v > 2000) return toast("Enter a number between 0 and 2000", "warn");
+          next(v);
+        };
+        box.querySelector(".none").onclick = () => next(0);
+      });
+      function soreness() {
+        coachSay("Any soreness today?");
+        choices([["No soreness", "none"], ["A little sore", "mild"], ["Sore, I need rest", "stop"]], v => { ans.soreness = v; later(feeling); });
+      }
+      function feeling() {
+        coachSay("And how do you feel overall?");
+        choices([["Tired", 1], ["Low", 2], ["OK", 3], ["Good", 4], ["Great", 5]], async v => {
+          ans.feeling = v;
+          const t = typing();
+          try {
+            T = await api("/api/train/checkin", { method: "POST", body: ans });
+            t.remove();
+            xpFloat($("feed"), 5);
+            afterCheckin(true);
+            drills(); hero(T.status); refreshLevel(T.status);
+          } catch (e) { t.remove(); coachSay(e.message); }
+        });
+      }
+    }
+
+    function afterCheckin(fresh) {
+      const c = T.checkin;
+      if (!fresh) coachSay(`You checked in today: ${c.balls_faced ?? 0} balls yesterday, ${c.soreness === "none" ? "no soreness" : c.soreness === "mild" ? "a little sore" : "needing rest"}.`);
+      if (T.rest_day) coachSay("Your body comes first, so today is a rest day: gentle walking and stretching only. If the soreness continues, please see a doctor or physio.");
+      else if (fresh) coachSay(`Thanks! Your plan is ready at ${T.difficulty.label.toLowerCase()} level. ${T.difficulty.why} Tick each drill as you finish it.`);
+      later(reflection, 700);
+    }
+
+    function reflection() {
+      const r = T.reflection;
+      if (!r) return history();
+      coachSay(r.question);
+      choices(r.options.map(o => [o, o]), async v => {
+        const t = typing();
+        try {
+          const res = await api("/api/train/reflection", { method: "POST", body: { analysis_id: r.analysis_id, answer: v } });
+          t.remove(); coachSay(res.reply);
+        } catch (e) { t.remove(); coachSay(e.message); }
+        history();
+      });
+    }
+
+    function history() {
+      T.chat.forEach(m => say(m.role, m.role === "coach" ? coachHtml(m.text) : esc(m.text), "old"));
+      if (!T.chat.length) later(() => coachSay("Anything you'd like to ask about your plan or your progress? Type below."), 400);
+    }
+
+    $("chat-form").onsubmit = async e => {
+      e.preventDefault();
+      const text = $("q").value.trim();
+      if (!text) return;
+      $("q").value = ""; userSay(text); $("send").disabled = true;
+      const t = typing();
+      try { const r = await api("/api/train/chat", { method: "POST", body: { text } }); t.remove(); coachSay(r.reply); }
+      catch (err) { t.remove(); coachSay(err.message); }
+      $("send").disabled = false;
+    };
+
+    // ------------------------------------------------------------ quiz
+    function quiz() {
+      const q = T.quiz;
+      $("quiz-q").textContent = q.question;
+      $("quiz-opts").innerHTML = q.options.map((o, i) => `<button type="button" class="qo" data-i="${i}"><span>${"ABCD"[i]}</span>${esc(o)}</button>`).join("");
+      const show = a => {
+        $("quiz-opts").querySelectorAll(".qo").forEach((b, i) => {
+          b.disabled = true;
+          b.classList.toggle("right", i === a.answer);
+          b.classList.toggle("wrong", i === a.choice && !a.correct);
+        });
+        $("quiz-why").hidden = false;
+        $("quiz-why").innerHTML = `<b>${a.correct ? "Correct!" : "Not quite."}</b> ${esc(a.why)}`;
+        $("quiz-xp").textContent = a.correct ? "+10 XP earned" : "+3 XP for trying";
+        $("quiz-xp").className = `chip ${a.correct ? "ok" : "low"}`;
+      };
+      if (q.answered) return show(q.answered);
+      $("quiz-opts").querySelectorAll(".qo").forEach(b => b.onclick = async () => {
+        $("quiz-opts").querySelectorAll(".qo").forEach(x => (x.disabled = true));
+        try {
+          const r = await api("/api/train/quiz", { method: "POST", body: { choice: +b.dataset.i } });
+          show({ ...r, choice: +b.dataset.i });
+          xpFloat(b, r.xp);
+          refreshLevel(r.status); hero(r.status);
+          if (r.level_up) celebrate(r.status.level, r.status.level_name);
+        } catch (e) { toast(e.message, "error"); $("quiz-opts").querySelectorAll(".qo").forEach(x => (x.disabled = false)); }
+      });
+    }
+
+    (async () => {
+      T = await api("/api/train/today");
+      hero(T.status); drills(); quiz();
+      if (T.checkin) { coachSay(`${greeting()}, ${first}!`); afterCheckin(false); }
+      else checkinFlow();
+    })().catch(e => toast(e.message, "error"));
+  </script>
+</body>
+</html>

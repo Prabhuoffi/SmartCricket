@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+data/uploads/
+data/outputs/
+data/cricshot10k/
+models/*.task
+models/*.pt
+.DS_Store
+LOGIN_DETAILS.txt
+data/certs/
+data/lan.json

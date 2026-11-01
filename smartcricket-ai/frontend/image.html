@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Photo analysis</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <div class="page-head">
+        <div class="reveal">
+          <h1>Photo analysis</h1>
+          <p class="muted">Get a posture report with joint angles from a single photo. A still image cannot show bat movement, so no shot type is predicted here.</p>
+        </div>
+      </div>
+
+      <div id="pick">
+        <div class="card reveal" style="padding:18px">
+          <label class="dropzone" id="drop" for="file">
+            <input type="file" id="file" accept="image/jpeg,image/png">
+            <div class="up-ico" id="up-ico"></div>
+            <b>Drop a batting photo here</b>
+            <p class="muted" style="margin:6px 0 0">or <span style="color:var(--brand);font-weight:600">browse your files</span> · JPG or PNG up to 10 MB</p>
+          </label>
+          <div style="display:flex;gap:12px;align-items:center;margin-top:16px;flex-wrap:wrap">
+            <input class="plain" id="session" placeholder="Session label (optional), e.g. Nets 30 Oct" maxlength="100" style="flex:1;min-width:220px">
+          </div>
+          <div id="msg" style="margin-top:14px"></div>
+        </div>
+        <div class="grid kpis reveal" style="margin-top:18px" id="tips"></div>
+      </div>
+
+      <div class="scan-stage" id="stage">
+        <div class="scan-frame"><img id="preview" alt="Selected photo"><div class="tint"></div><div class="laser"></div></div>
+        <div class="card">
+          <h2>Analysing your photo</h2>
+          <ul class="steps" id="steps">
+            <li data-s="0"><span class="st"></span>Uploading photo</li>
+            <li data-s="1"><span class="st"></span>Detecting 33 body landmarks</li>
+            <li data-s="2"><span class="st"></span>Checking visibility</li>
+            <li data-s="3"><span class="st"></span>Measuring joint angles</li>
+          </ul>
+          <div class="bar"><div id="bar"></div></div>
+          <p class="faint small" id="pct" style="margin:8px 0 0">0%</p>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js?v=48"></script>
+  <script>
+    requireLogin();
+    sidebar("image.html");
+    const $ = id => document.getElementById(id);
+    const MAX_MB = 10;
+    $("up-ico").innerHTML = icon("upload");
+    $("tips").innerHTML = [
+      ["camera", "tone-blue", "Side-on view", "Stand the camera square to the batter, at hip height."],
+      ["body", "tone-green", "Whole body in frame", "Head to feet visible gives all 33 points."],
+      ["sun", "tone-gold", "Good light", "Avoid strong shadows and back-lighting."],
+    ].map(([ic, tone, t, d]) => `<div class="card kpi ${tone}" style="padding:18px"><div class="ico" style="margin-bottom:10px">${icon(ic)}</div><b>${t}</b><p class="muted small" style="margin:4px 0 0">${d}</p></div>`).join("");
+    document.querySelectorAll(".steps .st").forEach(s => s.innerHTML = icon("check"));
+    revealAll();
+
+    const drop = $("drop");
+    ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+    ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, () => drop.classList.remove("over")));
+    drop.addEventListener("drop", e => { e.preventDefault(); if (e.dataTransfer.files[0]) start(e.dataTransfer.files[0]); });
+    $("file").onchange = () => $("file").files[0] && start($("file").files[0]);
+
+    function setStep(n) {
+      document.querySelectorAll("#steps li").forEach(li => {
+        const s = +li.dataset.s;
+        li.className = s < n ? "done" : s === n ? "active" : "";
+      });
+    }
+    function setPct(p) { $("bar").style.width = p + "%"; $("pct").textContent = Math.round(p) + "%"; }
+
+    function start(file) {
+      $("msg").innerHTML = "";
+      if (!["image/jpeg", "image/png"].includes(file.type)) return ($("msg").innerHTML = alertHtml("error", "Only JPG or PNG images are allowed."));
+      if (file.size > MAX_MB * 1024 * 1024) return ($("msg").innerHTML = alertHtml("error", `This file is larger than ${MAX_MB} MB.`));
+
+      $("preview").src = URL.createObjectURL(file);
+      $("pick").hidden = true;
+      $("stage").classList.add("on");
+      setStep(0); setPct(0);
+
+      const form = new FormData();
+      form.append("file", file);
+      const label = $("session").value.trim();
+      if (label) form.append("session_label", label);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/image/analyse");
+      xhr.setRequestHeader("Authorization", `Bearer ${getToken()}`);
+      let fake;
+      xhr.upload.onprogress = e => { if (e.lengthComputable) setPct((e.loaded / e.total) * 40); };
+      xhr.upload.onload = () => {
+        // Server-side steps are not streamed, so advance the indicator on a gentle timer until the reply arrives.
+        let s = 1, p = 40;
+        setStep(1);
+        fake = setInterval(() => { p = Math.min(92, p + 3); setPct(p); if (p > 60 && s < 2) setStep(s = 2); if (p > 78 && s < 3) setStep(s = 3); }, 120);
+      };
+      xhr.onload = () => {
+        clearInterval(fake);
+        let j = {};
+        try { j = JSON.parse(xhr.responseText); } catch {}
+        if (xhr.status === 401) return signOut();
+        if (xhr.status !== 200) return fail(typeof j.detail === "string" ? j.detail : "Upload failed, please try again.");
+        // The model is fast; keep each step on screen briefly so the user can follow what happened.
+        const finish = () => { setStep(4); setPct(100); setTimeout(() => go(`analysis.html?id=${j.id}`), reduceMotion ? 0 : 550); };
+        if (reduceMotion) return finish();
+        const wait = Math.max(0, 1600 - (performance.now() - t0));
+        [1, 2, 3].forEach((s, i) => setTimeout(() => { setStep(s); setPct(55 + i * 15); }, (wait / 3) * i));
+        setTimeout(finish, wait);
+      };
+      xhr.onerror = () => { clearInterval(fake); fail("Network error, please try again."); };
+      const t0 = performance.now();
+      xhr.send(form);
+    }
+
+    function fail(msg) {
+      $("stage").classList.remove("on");
+      $("pick").hidden = false;
+      $("file").value = "";
+      $("msg").innerHTML = alertHtml("error", msg);
+      toast(msg, "error");
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+comparison,only_first_right,only_second_right,p_value,significant_at_0.05
+E3 Video + pose (2D) vs E1 Video only,95,195,4.339046887836155e-09,True
+E9b Video + pose (3D) vs E1 Video only,109,191,2.54626341997208e-06,True
+E9b Video + pose (3D) vs E3 Video + pose (2D),122,104,0.25808148000665193,False
+E9a Pose only (3D) vs E2 Pose only (2D),129,124,0.8015050364897321,False

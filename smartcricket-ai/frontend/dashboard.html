@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Dashboard</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <div class="page-head">
+        <div class="reveal">
+          <p class="muted small" id="today" style="margin:0 0 4px"></p>
+          <h1 id="hello">Hello</h1>
+          <p class="muted">Here is how your batting is shaping up.</p>
+        </div>
+        <a class="btn reveal" href="image.html" id="cta"></a>
+      </div>
+
+      <!-- 1. scoreboard -->
+      <div class="scoreboard reveal" id="board"></div>
+      <a class="today-banner reveal" id="today-plan" href="training.html" hidden></a>
+
+      <!-- 2. profile + best photo -->
+      <div class="grid split" style="margin-top:18px">
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">Your posture</span><h2>My batting profile</h2></div>
+            <span class="legend"><i class="lg-avg"></i>Average <i class="lg-last"></i>Latest photo</span></div>
+          <div id="profile" class="profile"></div>
+          <p class="faint small" style="margin:12px 0 0">Averages use only joints that were clearly visible. "Left" and "right" are the batter's own sides.</p>
+        </div>
+        <div class="card reveal best-card">
+          <div class="card-head"><div><span class="eyebrow-s">Highlight</span><h2>Best photo</h2></div></div>
+          <div id="best"></div>
+        </div>
+      </div>
+
+      <!-- 3. calendar + knee trend -->
+      <div class="grid two" style="margin-top:18px">
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">Consistency</span><h2>Practice calendar</h2></div><span class="streak" id="streak"></span></div>
+          <div class="cal-wrap"><div class="cal-days"><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span><span>Sun</span></div><div class="cal" id="cal"></div></div>
+          <div class="cal-foot"><span id="cal-stats" class="muted small"></span>
+            <span class="cal-key small faint">Less <i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i> More</span></div>
+        </div>
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">Trend</span><h2>Front knee angle over time</h2></div><span class="chip info">degrees</span></div>
+          <p class="muted small" style="margin:0 0 10px">The more bent knee in each photo. Lower means a deeper bend.</p>
+          <div style="position:relative;height:200px"><canvas id="knee"></canvas></div>
+          <div id="knee-empty" class="muted small" hidden style="padding:30px 0;text-align:center">Analyse a few photos to see your trend.</div>
+        </div>
+      </div>
+
+      <!-- 4. recent + quick upload -->
+      <div class="grid split" style="margin-top:18px">
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">Latest</span><h2>Recent analyses</h2></div><a href="history.html" class="small" style="font-weight:700">View all →</a></div>
+          <div id="recent" class="recent-list"></div>
+        </div>
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">Quick start</span><h2>Analyse a photo</h2></div></div>
+          <label class="dropzone mini-drop" id="drop" for="qfile">
+            <input type="file" id="qfile" accept="image/jpeg,image/png">
+            <div class="up-ico" id="up-ico"></div>
+            <b>Drop a batting photo</b>
+            <p class="muted small" style="margin:4px 0 0">JPG or PNG · side-on works best</p>
+          </label>
+          <div class="bar" id="qbar" hidden><div></div></div>
+          <p class="small muted" id="qmsg" style="margin:10px 0 0"></p>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js?v=48"></script>
+  <script>
+    requireLogin();
+    sidebar("dashboard.html");
+    const $ = id => document.getElementById(id);
+    const name = (store.get(NAME_KEY) || "").split(" ")[0];
+    $("hello").innerHTML = `${greeting()}, <span class="grad-text">${esc(name || "player")}</span>`;
+    $("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+    $("cta").innerHTML = `${icon("camera")} New photo analysis`;
+    $("up-ico").innerHTML = icon("upload");
+    revealAll();
+
+    const JOINTS = [["left_knee", "Left knee"], ["right_knee", "Right knee"], ["left_elbow", "Left elbow"], ["right_elbow", "Right elbow"]];
+    const dayKey = d => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
+
+    (async () => {
+      const [hist, st] = await Promise.all([api("/api/history"), api("/api/train/status").catch(() => null)]);  // history newest first
+      const photos = hist.filter(a => a.mode === "image" && a.summary && a.summary.detected);
+      const videos = hist.filter(a => a.mode === "video");
+
+      // ---------------------------------------------------------- practice days and streak
+      // A practice day counts analyses, finished drills and check-ins (from the server when available).
+      const perDay = {};
+      hist.forEach(a => { const k = dayKey(a.created_at); perDay[k] = (perDay[k] || 0) + 1; });
+      if (st) Object.assign(perDay, st.days);
+      let streak = 0;
+      if (st) streak = st.streak;
+      else {
+        const d = new Date();
+        if (!perDay[dayKey(d)]) d.setDate(d.getDate() - 1);   // a streak survives until the end of today
+        while (perDay[dayKey(d)]) { streak++; d.setDate(d.getDate() - 1); }
+      }
+      if (st) {
+        const t = st.today, total = t.drills_total || 3;
+        $("today-plan").hidden = false;
+        $("today-plan").innerHTML = `<span class="tb-ic">${icon("dumbbell")}</span>
+          <div><b>${!t.checked_in ? "Your coach is waiting for today's check-in" : t.drills_done >= total ? "Today's drills are all done. Great work!" : "Today's training plan"}</b>
+          <small>${t.drills_done} of ${total} drills done · Level ${st.level} ${esc(st.level_name)} · ${st.xp.total} XP${t.quiz_done ? "" : " · quiz waiting"}</small></div>
+          <span class="tb-dots">${Array.from({ length: total }, (_, i) => `<i class="${i < t.drills_done ? "on" : ""}"></i>`).join("")}</span>
+          <span class="go">${t.checked_in ? "Open plan" : "Check in"} →</span>`;
+      }
+
+      // ---------------------------------------------------------- 1. scoreboard
+      const vis = photos.map(a => a.summary.visible);
+      const cells = [
+        ["Analyses", hist.length, 0], ["Photos", photos.length, 0], ["Videos", videos.length, 0],
+        ["Avg points visible", vis.length ? vis.reduce((s, v) => s + v, 0) / vis.length : null, 1], ["Day streak", streak, 0],
+      ];
+      $("board").innerHTML = '<div class="sb-bulbs">' + Array.from({ length: 34 }, (_, i) => `<i style="animation-delay:${(i % 4) * 0.25}s"></i>`).join("") + "</div>" +
+        cells.map(([l, v], i) => `<div class="sb-cell"><b data-v="${v ?? ""}" data-d="${cells[i][2]}">${v == null ? "–" : 0}</b><span>${l}${i === 4 && streak ? ` ${icon("flame").replace("<svg", '<svg class="sb-flame"')}` : ""}</span></div>`).join("");
+      $("board").querySelectorAll("b[data-v]").forEach(b => { if (b.dataset.v !== "") countUp(b, +b.dataset.v, { decimals: +b.dataset.v % 1 ? +b.dataset.d : 0 }); });
+
+      // ---------------------------------------------------------- 2. batting profile
+      const latest = photos[0];
+      const rows = JOINTS.map(([k, label]) => {
+        const vals = photos.map(a => a.angles?.[k]?.deg).filter(v => v != null);
+        const last = latest?.angles?.[k]?.deg ?? null;
+        return { label, avg: vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null, last, n: vals.length };
+      });
+      const tilts = photos.map(a => a.summary.shoulder_line_deg).filter(v => v != null);
+      rows.push({ label: "Shoulder tilt", avg: tilts.length ? tilts.reduce((s, v) => s + v, 0) / tilts.length : null,
+                  last: latest?.summary?.shoulder_line_deg ?? null, n: tilts.length, max: 90 });
+      $("profile").innerHTML = photos.length ? rows.map(r => {
+        const max = r.max || 180;
+        if (r.avg == null) return `<div class="pr off"><div class="pr-l"><b>${r.label}</b><small>not measured yet</small></div><div class="pr-g"><div class="pr-track"></div></div><div class="pr-v">–</div></div>`;
+        const diff = r.last != null ? r.last - r.avg : null;
+        const dTxt = diff == null ? "" : Math.abs(diff) < 1 ? `<span class="pr-d same">= avg</span>` :
+          `<span class="pr-d ${diff > 0 ? "up" : "down"}">${diff > 0 ? "▲" : "▼"} ${Math.abs(diff).toFixed(1)}°</span>`;
+        return `<div class="pr"><div class="pr-l"><b>${r.label}</b><small>${r.n} photo${r.n === 1 ? "" : "s"}</small></div>
+          <div class="pr-g"><div class="pr-track"><i class="pr-fill" data-w="${(r.avg / max) * 100}"></i>
+            <i class="pr-avg" style="left:${(r.avg / max) * 100}%"></i>${r.last != null ? `<i class="pr-last" style="left:${(r.last / max) * 100}%"></i>` : ""}</div>
+            <div class="pr-scale"><span>0°</span><span>${max / 2}°</span><span>${max}°</span></div></div>
+          <div class="pr-v"><b data-v="${r.avg}">0°</b>${dTxt}</div></div>`;
+      }).join("") : `<div class="empty" style="padding:30px 0"><p class="muted">Analyse a photo to build your batting profile.</p></div>`;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        document.querySelectorAll(".pr-fill").forEach((f, i) => { f.style.transitionDelay = `${i * 90}ms`; f.style.width = f.dataset.w + "%"; });
+        document.querySelectorAll(".pr-v b[data-v]").forEach(b => countUp(b, +b.dataset.v, { decimals: 1, suffix: "°" }));
+      }));
+
+      // ---------------------------------------------------------- 3. best photo
+      const best = [...photos].sort((a, b) => b.summary.visible - a.summary.visible || Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+      if (best) {
+        const measured = Object.values(best.angles || {}).filter(v => v.deg !== null).length;
+        $("best").innerHTML = `<a class="best" href="${resultPage(best)}">
+          <div class="best-img"><img id="best-img" alt="Best analysed photo"><span class="chip ok best-badge">${best.summary.visible}/33 points</span>
+            <span class="best-star">${icon("spark")}</span></div>
+          <div class="best-meta"><b>${esc(best.session_label || (/^[0-9a-f]{16,}/i.test(best.original_name) ? "Batting photo" : best.original_name))}</b><span class="faint small">${fmtDate(best.created_at)}</span>
+            <div class="best-stats"><span><b>${best.summary.visible}</b> points visible</span><span><b>${measured}</b>/8 angles</span>
+            ${best.summary.shoulder_line_deg != null ? `<span><b>${best.summary.shoulder_line_deg}°</b> shoulder tilt</span>` : ""}</div>
+            <span class="best-open">Open report →</span></div></a>`;
+        loadImage($("best-img"), best.files.output);
+      } else {
+        $("best").innerHTML = `<div class="empty" style="padding:30px 0"><p class="muted">Your clearest photo will appear here.</p></div>`;
+      }
+
+      // ---------------------------------------------------------- 4. practice calendar (8 weeks, Monday first)
+      const end = new Date(); end.setHours(0, 0, 0, 0);
+      const start = new Date(end); start.setDate(end.getDate() - 55 - ((end.getDay() + 6) % 7));
+      let html = "";
+      for (let c = new Date(start); c <= end; c.setDate(c.getDate() + 1)) {
+        const n = perDay[dayKey(c)] || 0, lvl = n === 0 ? 0 : n === 1 ? 1 : n < 4 ? 2 : 3;
+        html += `<i class="l${lvl}${dayKey(c) === dayKey(end) ? " today" : ""}" title="${c.toLocaleDateString(undefined, { day: "numeric", month: "short" })}: ${n} practice item${n === 1 ? "" : "s"}"></i>`;
+      }
+      $("cal").innerHTML = html;
+      [...$("cal").children].forEach((cell, i) => (cell.style.animationDelay = `${i * 8}ms`));
+      const activeDays = Object.keys(perDay).length, bestDay = Object.entries(perDay).sort((a, b) => b[1] - a[1])[0];
+      $("streak").innerHTML = streak ? `${icon("flame")} ${streak}-day streak` : `${icon("flame")} Start a streak today`;
+      $("streak").classList.toggle("cold", !streak);
+      $("cal-stats").textContent = activeDays ? `${activeDays} active day${activeDays === 1 ? "" : "s"} · best day ${bestDay[1]} items` : "No practice logged yet";
+
+      // ---------------------------------------------------------- 5. knee trend
+      const knee = [...photos].reverse().map(a => {
+        const v = ["left_knee", "right_knee"].map(k => a.angles?.[k]?.deg).filter(x => x != null);
+        return v.length ? { date: a.created_at, deg: Math.min(...v) } : null;
+      }).filter(Boolean);
+      if (knee.length) {
+        const ctx = $("knee").getContext("2d"), g = ctx.createLinearGradient(0, 0, 0, 200);
+        g.addColorStop(0, "rgba(15,92,58,.32)"); g.addColorStop(1, "rgba(15,92,58,0)");
+        new Chart(ctx, { type: "line",
+          data: { labels: knee.map(p => fmtDay(p.date)), datasets: [{ data: knee.map(p => p.deg), borderColor: "#0f5c3a", backgroundColor: g, fill: true, tension: .4,
+            borderWidth: 3, pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: "#fff", pointBorderColor: "#c8102e", pointBorderWidth: 2.5 }] },
+          options: { maintainAspectRatio: false, animation: { duration: reduceMotion ? 0 : 1300 }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.y.toFixed(1)}°` } } },
+            scales: { x: { grid: { display: false } }, y: { suggestedMin: 90, suggestedMax: 180, ticks: { callback: v => v + "°" }, grid: { color: "rgba(11,26,18,.06)" } } } } });
+      } else { $("knee").parentElement.hidden = true; $("knee-empty").hidden = false; }
+
+      // ---------------------------------------------------------- 6. recent
+      $("recent").innerHTML = hist.length ? hist.slice(0, 4).map(a => `
+        <a href="${resultPage(a)}" class="ri"><img class="thumb" data-src="${a.files.output}" alt="">
+          <div style="min-width:0;flex:1"><b>${esc(a.session_label || a.original_name)}</b><span class="faint small">${fmtDate(a.created_at)}</span></div>
+          ${a.mode === "image" ? `<span class="chip ${a.summary.visible >= 25 ? "ok" : a.summary.visible ? "low" : "off"}">${a.summary.visible}/33</span>` : `<span class="chip info">${esc(a.shot || "Movement")}</span>`}
+          <span class="ri-go">${icon("arrow")}</span></a>`).join("")
+        : `<div class="empty" style="padding:24px 0"><p class="muted">No analyses yet.</p></div>`;
+      $("recent").querySelectorAll("img[data-src]").forEach(img => loadImage(img, img.dataset.src));
+    })().catch(e => toast(e.message, "error"));
+
+    // ---------------------------------------------------------- quick upload
+    const drop = $("drop");
+    ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+    ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, () => drop.classList.remove("over")));
+    drop.addEventListener("drop", e => { e.preventDefault(); if (e.dataTransfer.files[0]) quick(e.dataTransfer.files[0]); });
+    $("qfile").onchange = () => $("qfile").files[0] && quick($("qfile").files[0]);
+    function quick(file) {
+      if (!["image/jpeg", "image/png"].includes(file.type)) return toast("Only JPG or PNG images are allowed", "error");
+      if (file.size > 10 * 1024 * 1024) return toast("This file is larger than 10 MB", "error");
+      const form = new FormData(); form.append("file", file);
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/image/analyse");
+      xhr.setRequestHeader("Authorization", `Bearer ${getToken()}`);
+      $("qbar").hidden = false; $("qmsg").textContent = "Uploading…";
+      xhr.upload.onprogress = e => { if (e.lengthComputable) $("qbar").firstElementChild.style.width = (e.loaded / e.total) * 100 + "%"; };
+      xhr.upload.onload = () => ($("qmsg").textContent = "Finding body landmarks…");
+      xhr.onload = () => {
+        let j = {}; try { j = JSON.parse(xhr.responseText); } catch {}
+        if (xhr.status === 401) return signOut();
+        if (xhr.status !== 200) { $("qbar").hidden = true; $("qmsg").textContent = ""; return toast(typeof j.detail === "string" ? j.detail : "Upload failed", "error"); }
+        $("qmsg").textContent = "Done! Opening your report…";
+        setTimeout(() => go(`analysis.html?id=${j.id}`), 400);
+      };
+      xhr.onerror = () => { $("qbar").hidden = true; toast("Network error, please try again", "error"); };
+      xhr.send(form);
+    }
+  </script>
+</body>
+</html>

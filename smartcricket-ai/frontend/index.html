@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <base href="/app/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Batting analysis and virtual coaching</title>
+  <meta name="description" content="Upload a batting photo or clip. SmartCricket AI maps 33 body points, measures your joint angles, recognises the shot and explains it like a coach.">
+  <link rel="stylesheet" href="css/landing.css?v=48">
+  <script>
+    // Every load or refresh starts at the hero, not where the visitor last scrolled.
+    if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+    addEventListener("load", () => scrollTo({ top: 0, left: 0, behavior: "instant" }));
+    addEventListener("pageshow", () => scrollTo({ top: 0, left: 0, behavior: "instant" }));
+  </script>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><radialGradient id="ballG" cx="38%" cy="32%" r="72%"><stop offset="0" stop-color="#f04a62"/><stop offset=".5" stop-color="#c8102e"/><stop offset="1" stop-color="#6a0614"/></radialGradient><radialGradient id="ballS" cx="70%" cy="78%" r="60%"><stop offset="0" stop-color="#000" stop-opacity=".28"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs></svg>
+  <div class="progress" id="progress"></div>
+
+  <!-- ============================================================ nav -->
+  <header class="nav" id="nav">
+    <div class="wrap">
+      <a href="#top" class="logo" aria-label="SmartCricket AI home">
+        <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="url(#ballG)"/><g class="seam-g"><path d="M28.6 2.4Q22.6 32 28.6 61.6" fill="none" stroke="#f3e9d2" stroke-width="1.7"/><path d="M35.4 2.4Q29.4 32 35.4 61.6" fill="none" stroke="#f3e9d2" stroke-width="1.7"/><path d="M24.9 6Q18.9 32 24.9 58" fill="none" stroke="#f3e9d2" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="1.4 2.8"/><path d="M39.1 6Q33.1 32 39.1 58" fill="none" stroke="#f3e9d2" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="1.4 2.8"/></g><circle cx="32" cy="32" r="30" fill="url(#ballS)"/><ellipse cx="21" cy="17" rx="9" ry="5" fill="#fff" opacity=".28" transform="rotate(-35 21 17)"/></svg>
+        <span>SmartCricket AI<small>Batting analysis &amp; coaching</small></span>
+      </a>
+      <nav class="links" aria-label="Main">
+        <a href="#features">Features</a><a href="#new">What's new</a><a href="#how">How it works</a><a href="#demo">Live demo</a><a href="#faq">FAQ</a>
+      </nav>
+      <div class="nav-cta" id="nav-cta">
+        <a class="btn btn-line" href="login.html">Log in</a>
+        <a class="btn btn-red" href="login.html?mode=register">Get started</a>
+      </div>
+      <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- ============================================================ hero -->
+    <section class="hero">
+      <div class="beam l"></div><div class="beam r"></div><div class="flashes" id="flashes"></div><div class="stripes"></div><div class="glow"></div>
+      <div class="wrap hero-grid">
+        <div>
+          <span class="live rv in"><i></i>Live AI analysis · for every batter</span>
+          <h1 class="split">
+            <span class="w"><span>See</span></span> <span class="w"><span>every</span></span> <span class="w"><span class="red">stroke.</span></span><br>
+            <span class="w"><span class="outline">Understand</span></span> <span class="w"><span>every</span></span> <span class="w"><span>angle.</span></span>
+          </h1>
+          <p class="lead rv">Upload a photo or a short clip of your batting. SmartCricket AI maps 33 points on your body, measures your joint angles,
+            recognises the shot and explains it in plain words, like a coach standing beside the nets.</p>
+          <div class="ctas rv d1">
+            <a class="btn btn-red mag" href="login.html?mode=register">Start free analysis <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+            <a class="btn btn-line" href="#demo">See it in action</a>
+          </div>
+          <div class="trust rv d2">
+            <div><b>33</b>body points tracked</div>
+            <div><b>15</b>batting shots</div>
+            <div><b>8</b>joint angles measured</div>
+          </div>
+        </div>
+
+        <div class="scene-wrap rv d2" aria-hidden="true">
+          <svg class="scene" viewBox="0 0 500 600">
+            <!-- pitch in perspective -->
+            <polygon points="208,80 292,80 384,566 116,566" fill="#f3e9d2" opacity=".1"/>
+            <polygon points="208,80 292,80 384,566 116,566" fill="none" stroke="#7fd1a0" stroke-opacity=".7" stroke-width="1.5"/>
+            <line x1="200" y1="112" x2="300" y2="112" stroke="#f3e9d2" stroke-opacity=".6" stroke-width="2"/>
+            <line x1="132" y1="500" x2="368" y2="500" stroke="#f3e9d2" stroke-opacity=".6" stroke-width="3"/>
+            <line x1="146" y1="478" x2="354" y2="478" stroke="#f3e9d2" stroke-opacity=".35" stroke-width="2"/>
+            <!-- far stumps -->
+            <g fill="#f3e9d2"><rect x="242" y="66" width="3" height="26" rx="1"/><rect x="248.5" y="66" width="3" height="26" rx="1"/><rect x="255" y="66" width="3" height="26" rx="1"/><rect x="240" y="63" width="20" height="3" rx="1.5"/></g>
+            <!-- bounce mark -->
+            <path class="trail" d="M 250 92 L 250 300 L 250 520" fill="none" stroke="#f3e9d2" stroke-width="6" stroke-linecap="round"/>
+            <circle class="bounce" cx="250" cy="300" r="16" fill="none" stroke="#f3e9d2" stroke-width="3"/>
+            <!-- near stumps -->
+            <g class="stump-near" fill="#f3e9d2">
+              <rect x="222" y="408" width="10" height="92" rx="4"/><rect x="245" y="408" width="10" height="92" rx="4"/><rect x="268" y="408" width="10" height="92" rx="4"/>
+            </g>
+            <rect class="bail" x="222" y="400" width="30" height="7" rx="3.5" fill="#f3e9d2"/>
+            <rect class="bail b2" x="248" y="400" width="30" height="7" rx="3.5" fill="#f3e9d2"/>
+            <circle class="ring" cx="250" cy="440" r="40" fill="none" stroke="#f3e9d2" stroke-width="4"/>
+            <g id="sparks"></g>
+            <!-- the ball, drawn at the origin and moved along the pitch -->
+            <g class="ball"><g transform="translate(-15 -15) scale(.46875)"><circle cx="32" cy="32" r="30" fill="url(#ballG)"/><g class="seam"><path d="M28.6 2.4Q22.6 32 28.6 61.6" fill="none" stroke="#f3e9d2" stroke-width="1.7"/><path d="M35.4 2.4Q29.4 32 35.4 61.6" fill="none" stroke="#f3e9d2" stroke-width="1.7"/><path d="M24.9 6Q18.9 32 24.9 58" fill="none" stroke="#f3e9d2" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="1.4 2.8"/><path d="M39.1 6Q33.1 32 39.1 58" fill="none" stroke="#f3e9d2" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="1.4 2.8"/></g><circle cx="32" cy="32" r="30" fill="url(#ballS)"/><ellipse cx="21" cy="17" rx="9" ry="5" fill="#fff" opacity=".28" transform="rotate(-35 21 17)"/></g></g>
+          </svg>
+          <div class="bowled">Bowled!</div>
+          <div class="chip-float c1"><span class="dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v7M7 10l5-2 5 2M9 21l3-7 3 7"/></svg></span><div><b>33 / 33</b>body points found</div></div>
+          <div class="chip-float c2"><span class="dot cream"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20L20 20M4 20L14 6"/><path d="M9 20a5 5 0 0 0-2-4"/></svg></span><div><b>122°</b>front knee angle</div></div>
+          <div class="chip-float c3"><span class="dot blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5h16v11H8l-4 4z"/></svg></span><div><b>AI coach</b>explains every result</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ marquee -->
+    <div class="marquee" aria-label="Shots the system recognises">
+      <div class="track" id="marquee"></div>
+    </div>
+
+    <!-- ============================================================ features -->
+    <section id="features">
+      <div class="wrap">
+        <div class="head">
+          <div class="rv"><span class="eyebrow">What you get</span><h2 style="margin-top:14px">Everything a batter needs <br>to read <span class="hl">their own game.</span></h2></div>
+          <p class="lead rv d1">Analysis, live training and a coach in one place. Built on a research dataset of 10,086 broadcast clips; every result comes with the evidence behind it.</p>
+        </div>
+        <div class="features" id="feature-grid"></div>
+      </div>
+    </section>
+
+    <div class="rope" aria-hidden="true"><span class="rb"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="url(#ballG)"/><g class="seam-g"><path d="M28.6 2.4Q22.6 32 28.6 61.6" fill="none" stroke="#f3e9d2" stroke-width="1.7"/><path d="M35.4 2.4Q29.4 32 35.4 61.6" fill="none" stroke="#f3e9d2" stroke-width="1.7"/><path d="M24.9 6Q18.9 32 24.9 58" fill="none" stroke="#f3e9d2" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="1.4 2.8"/><path d="M39.1 6Q33.1 32 39.1 58" fill="none" stroke="#f3e9d2" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="1.4 2.8"/></g><circle cx="32" cy="32" r="30" fill="url(#ballS)"/><ellipse cx="21" cy="17" rx="9" ry="5" fill="#fff" opacity=".28" transform="rotate(-35 21 17)"/></svg></span></div>
+
+    <!-- ============================================================ what's new -->
+    <section class="new" id="new">
+      <div class="wrap new-grid">
+        <div>
+          <span class="eyebrow light rv">What's new</span>
+          <h2 class="rv d1" style="margin-top:14px">Train live, <span class="lime">with a coach that talks back.</span></h2>
+          <p class="lead rv d2">SmartCricket now goes beyond reports. Stand in front of your camera and the app coaches you in real time.</p>
+          <div class="new-list" id="new-list"></div>
+          <a class="btn btn-lime rv d4" href="login.html?mode=register&next=live.html">Try live mirror <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        </div>
+        <div class="live-mock rv d2" aria-hidden="true">
+          <div class="lm-top"><span class="lm-rec"></span>LIVE <b>60 fps</b></div>
+          <svg class="lm-body" viewBox="0 0 200 260">
+            <g class="lm-ghost"><path d="M100 40 L100 120 M100 60 L70 95 L62 128 M100 60 L132 88 L150 70 M100 120 L78 175 L70 235 M100 120 L128 172 L140 232"/><circle cx="100" cy="28" r="12"/></g>
+            <g class="lm-you"><path d="M104 44 L102 122 M104 64 L76 98 L66 130 M104 64 L134 92 L148 78 M102 122 L84 176 L74 236 M102 122 L126 176 L136 234"/><circle cx="104" cy="32" r="12"/></g>
+          </svg>
+          <div class="lm-tag lm-knee">Front knee <b>148°</b></div>
+          <div class="lm-score"><b>87%</b><span>match with the pro</span></div>
+          <div class="lm-voice"><span></span>"Seven… bend a little more… eight!"</div>
+          <div class="lm-reps"><b>8</b><span>/ 10 reps</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ how it works -->
+    <section class="how" id="how">
+      <div class="wrap">
+        <div class="head" style="justify-content:center;text-align:center;flex-direction:column;align-items:center">
+          <span class="eyebrow rv">Three steps</span>
+          <h2 class="rv d1" style="margin-top:14px">From the nets to <span class="hl">insight</span> in seconds.</h2>
+        </div>
+        <div class="steps rv" id="steps">
+          <div class="rail"><i></i></div>
+          <div class="step"><div class="num">1</div><h3>Capture</h3><p>Upload a side-on photo, a single stroke or a whole nets video, or go live with your laptop or phone camera.</p></div>
+          <div class="step"><div class="num">2</div><h3>Analyse</h3><p>The AI checks the input quality, follows the batter, measures your joints in 2D and 3D and finds every shot in the video.</p></div>
+          <div class="step"><div class="num">3</div><h3>Improve</h3><p>Your AI Coach turns the numbers into a daily drill plan, counts your reps live and tracks your progress.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ live demo -->
+    <section class="demo" id="demo">
+      <div class="wrap demo-grid">
+        <div class="viewer rv" id="viewer">
+          <img src="img/demo-batter.jpg" alt="A batter moving onto the front foot" width="900" height="1042" loading="lazy">
+          <svg id="demo-svg" aria-hidden="true"></svg>
+          <div class="scanline"></div>
+          <span class="badge">Real output</span>
+        </div>
+        <div>
+          <span class="eyebrow light rv">Live demo</span>
+          <h2 class="rv d1" style="margin-top:14px">This is what <span class="lime">the AI sees.</span></h2>
+          <p class="lead rv d2">This skeleton is the real result of SmartCricket's posture module on this photo: every body point detected,
+            and each joint measured only when it is clearly visible.</p>
+          <div class="angles rv d3" id="angles"></div>
+          <a class="btn btn-lime rv d4" href="login.html?mode=register">Try it with your own photo <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          <p class="credit">Photo: Acabashi, Wikimedia Commons, CC BY-SA 4.0. Overlay produced by SmartCricket AI.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ stats -->
+    <section>
+      <div class="wrap">
+        <div class="stats">
+          <div class="stat rv"><b data-count="10086">0</b><span>training clips</span></div>
+          <div class="stat rv d1"><b data-count="15">0</b><span>shot types recognised</span></div>
+          <div class="stat rv d2"><b data-count="33">0</b><span>body points tracked</span></div>
+          <div class="stat rv d3"><b data-count="60">0</b><span>live frames a second</span></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="rope" aria-hidden="true"><span class="rb" style="animation-delay:-3.5s;animation-direction:reverse"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="url(#ballG)"/><g class="seam-g"><path d="M28.6 2.4Q22.6 32 28.6 61.6" fill="none" stroke="#f3e9d2" stroke-width="1.7"/><path d="M35.4 2.4Q29.4 32 35.4 61.6" fill="none" stroke="#f3e9d2" stroke-width="1.7"/><path d="M24.9 6Q18.9 32 24.9 58" fill="none" stroke="#f3e9d2" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="1.4 2.8"/><path d="M39.1 6Q33.1 32 39.1 58" fill="none" stroke="#f3e9d2" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="1.4 2.8"/></g><circle cx="32" cy="32" r="30" fill="url(#ballS)"/><ellipse cx="21" cy="17" rx="9" ry="5" fill="#fff" opacity=".28" transform="rotate(-35 21 17)"/></svg></span></div>
+
+    <!-- ============================================================ audience -->
+    <section style="padding-top:0">
+      <div class="wrap">
+        <div class="head"><div class="rv"><span class="eyebrow">Made for</span><h2 style="margin-top:14px">Players, coaches <span class="hl">and academies.</span></h2></div></div>
+        <div class="audience">
+          <div class="aud rv"><span class="big">01</span><h3>Players</h3><p>Understand your own stroke without waiting for a coach.</p>
+            <ul><li>Posture report from one photo</li><li>Live mirror with a voice coach</li><li>Daily drills, streaks and levels</li></ul></div>
+          <div class="aud rv d1"><span class="big">02</span><h3>Coaches</h3><p>Back up what you see with numbers you can show.</p>
+            <ul><li>Shadow-the-pro ghost and stroke match</li><li>3D angles that ignore camera angle</li><li>One-click PDF reports to share</li></ul></div>
+          <div class="aud rv d2"><span class="big">03</span><h3>Academies</h3><p>Give every player structured feedback, at scale.</p>
+            <ul><li>Admin console for every player</li><li>See who needs a nudge</li><li>Reference clips for each shot</li></ul></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ faq -->
+    <section id="faq" style="padding-top:0">
+      <div class="wrap">
+        <div class="head" style="justify-content:center;text-align:center;flex-direction:column;align-items:center">
+          <span class="eyebrow rv">Questions</span><h2 class="rv d1" style="margin-top:14px">Good to <span class="hl">know.</span></h2>
+        </div>
+        <div class="faq" id="faq-list"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ cta -->
+    <section style="padding-top:0;padding-bottom:0">
+      <div class="wrap">
+        <div class="cta rv">
+          <div class="seamline"></div>
+          <div><h2>Ready to see your batting <span class="lime">the way the AI does?</span></h2>
+            <p>Create a free account and analyse your first photo in under a minute.</p></div>
+          <div class="acts">
+            <a class="btn btn-lime mag" href="login.html?mode=register">Create free account</a>
+            <a class="btn btn-line" href="login.html" >I already have an account</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="cols">
+        <div><a href="#top" class="logo" style="padding:0">SmartCricket AI</a>
+          <p style="max-width:360px">An explainable multimodal cricket shot analysis and intelligent virtual coaching system.
+            M.E. Computer Science and Engineering final-year project.</p></div>
+        <div><h4>Product</h4><a href="#features">Features</a><a href="#new">What's new</a><a href="#how">How it works</a><a href="#demo">Live demo</a><a href="#faq">FAQ</a></div>
+        <div><h4>Account</h4><a href="login.html">Log in</a><a href="login.html?mode=register">Create account</a></div>
+      </div>
+      <div class="fine">Shot recognition is trained on CricShot10k (Dihan et al., IEEE Access, 2026), used for non-commercial research.
+        Demo photo: Acabashi, Wikimedia Commons, CC BY-SA 4.0. Joint angles are 2D estimates from one camera view and are not medical advice.
+        <br>© 2026 SmartCricket AI · Academic project</div>
+    </div>
+  </footer>
+
+  <script src="js/demo-pose.js?v=48"></script>
+  <script src="js/landing-fx.js?v=48" defer></script>
+  <script>
+    const $ = id => document.getElementById(id);
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const ICON = {
+      mirror: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="9" r="2"/><path d="M12 11v4M9 13l3-1 3 1M10 19l2-4 2 4"/>',
+      mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+      ghost: '<path d="M6 20V10a6 6 0 0 1 12 0v10l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5z"/><path d="M10 10h.01M14 10h.01"/>',
+      cube: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5"/>',
+      phone: '<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+      dumbbell: '<path d="M6 8v8M3.5 10v4M18 8v8M20.5 10v4M6 12h12"/>',
+      shield: '<path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+      cut: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.1 8.1L20 20M8.1 15.9L20 4"/>',
+      camera: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
+      video: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/>',
+      flame: '<path d="M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5 1-8.5z"/>',
+      compare: '<path d="M8 4v16M16 4v16M4 8h4M16 16h4M4 16h4M16 8h4"/>',
+      chat: '<path d="M4 5h16v11H8l-4 4z"/><path d="M8 10h8M8 13h5"/>',
+      chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+    };
+    const svg = n => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICON[n]}</svg>`;
+
+    // ---------------------------------------------------------- headline words, staggered
+    document.querySelectorAll(".split .w > span").forEach((s, i) => (s.style.animationDelay = `${0.15 + i * 0.09}s`));
+
+    // ---------------------------------------------------------- marquee
+    const SHOTS = ["Cover Drive", "Defensive", "Down The Wicket", "Flick", "Hook", "Late Cut", "Lofted Legside", "Lofted Offside",
+                   "Pull", "Reverse Sweep", "Scoop", "Square Cut", "Straight Drive", "Sweep", "Upper Cut"];
+    $("marquee").innerHTML = [...SHOTS, ...SHOTS].map(s => `<span>${s}</span>`).join("");
+
+    // ---------------------------------------------------------- features
+    $("feature-grid").innerHTML = [
+      ["camera", "Photo posture report", "33 body points, 8 joint angles and a 3D view from one photo. Hidden joints are left out, never guessed.", "Know your stance"],
+      ["video", "Video analysis", "Your skeleton on every frame, how each joint moved and your peak moment. Long nets videos are split into shots.", "See the whole stroke"],
+      ["mirror", "Live mirror", "Train in front of your camera: live skeleton and angles, reps counted for you, nothing uploaded.", "New · on-device"],
+      ["ghost", "Shadow the pro", "A model player's ghost moves on your body. Copy it and get a live match score and stroke comparison.", "New · learn by copying"],
+      ["dumbbell", "Daily training coach", "Three drills a day chosen from your own numbers, a check-in that respects soreness, levels and streaks.", "Practise the right thing"],
+      ["chat", "One AI Coach", "Ask anything on any page. Answers use only your measured numbers and know your plan and progress.", "Plain-language advice"],
+      ["cube", "3D joint angles", "Angles measured in 3D are not fooled by the camera position, so front-on clips still give fair numbers.", "New · more accurate"],
+      ["shield", "Input quality check", "Every upload is scored for sharpness, light, framing and view, with a tip to film better next time.", "New · trust the numbers"],
+      ["chart", "Progress and reports", "Weekly coach summary, trend charts, history and one-click branded PDF reports.", "Track your growth"],
+    ].map(([ic, t, d, tag], i) => `<div class="feature rv d${i % 3}"><div class="ic">${svg(ic)}</div><h3>${t}</h3><p>${d}</p><span class="tag">${tag}</span></div>`).join("");
+
+    // ---------------------------------------------------------- what's new
+    $("new-list").innerHTML = [
+      ["mirror", "Live mirror", "Skeleton and angles live, reps and holds counted automatically.", "Practise with feedback, not guesswork"],
+      ["mic", "Voice coach", "Counts your reps and corrects you out loud; say \"start\" or \"stop\" hands-free.", "Eyes on the drill, not the screen"],
+      ["ghost", "Shadow the pro", "A gold ghost of a model player on your body, with a live match score.", "Learn a shot by copying it"],
+      ["phone", "Phone camera and QR", "Scan a code and train with your phone propped up at the nets.", "Train anywhere you bat"],
+      ["cut", "Whole nets videos", "Upload one long video; every shot is found and analysed on its own.", "No trimming clips by hand"],
+      ["cube", "3D pose and quality score", "Angles in 3D plus a quality check on every upload.", "Numbers you can trust"],
+    ].map(([ic, t, d, b], i) => `<div class="nl rv d${i % 3}"><div class="nl-ic">${svg(ic)}</div><div><b>${t}</b><p>${d}</p><span class="nl-b">${b}</span></div></div>`).join("");
+
+    // ---------------------------------------------------------- faq
+    $("faq-list").innerHTML = [
+      ["Do I need special equipment?", "No. A phone camera is enough. Film side-on, at hip height, with the whole batter in view."],
+      ["Does a photo tell me which shot I played?", "No, on purpose. A single photo cannot show how the bat moves, so photos give a posture report. Upload a short clip to have the shot recognised."],
+      ["Who can see my photos and videos?", "Only you. Files stay on the SmartCricket server and are linked to your account. The AI coach receives your numbers only, never your images."],
+      ["How accurate is it?", "Shot recognition is trained and tested on the CricShot10k dataset of 10,086 labelled clips. Every prediction comes with a calibrated confidence, and unsure results are clearly flagged."],
+      ["Does live mirror record or upload my camera?", "No. Pose tracking runs inside your browser and each frame is thrown away straight after. Only the numbers you choose to save (a session summary, or a best moment you press save on) are stored."],
+      ["Can I use my phone at the nets?", "Yes. Turn on phone mode on the Live mirror page, scan the QR code with your phone on the same Wi-Fi, sign in and press Start camera. You can also upload a whole nets video: each shot is found and analysed separately."],
+      ["Does the AI coach replace a real coach?", "No. It explains your measured results in plain words and suggests drills. Angles are 2D estimates from one camera, not a judgement of right or wrong technique."],
+    ].map(([q, a], i) => `<div class="qa rv d${Math.min(i, 3)}"><button aria-expanded="false">${q}<i>+</i></button><div class="ans"><div><p>${a}</p></div></div></div>`).join("");
+    document.querySelectorAll(".qa button").forEach(b => (b.onclick = () => {
+      const qa = b.parentElement, open = !qa.classList.contains("open");
+      document.querySelectorAll(".qa").forEach(x => { x.classList.remove("open"); x.firstElementChild.setAttribute("aria-expanded", "false"); });
+      if (open) { qa.classList.add("open"); b.setAttribute("aria-expanded", "true"); }
+    }));
+
+    // ---------------------------------------------------------- demo skeleton (real pose data)
+    (function demo() {
+      const D = DEMO_POSE, [w, h] = D.size, H = 100 * h / w, L = D.lm, P = i => [L[i][0] * 100, L[i][1] * H];
+      let out = "";
+      D.edges.forEach(([a, b], i) => {
+        if (Math.min(L[a][2], L[b][2]) < 0.5) return;
+        const [x1, y1] = P(a), [x2, y2] = P(b);
+        out += `<path class="bone" pathLength="1" d="M${x1} ${y1}L${x2} ${y2}" style="animation-delay:${0.5 + i * 0.07}s"/>`;
+      });
+      L.forEach((p, i) => {
+        if ((i > 0 && i < 11) || p[2] < 0.5) return;
+        const [x, y] = P(i);
+        out += `<circle class="joint" cx="${x}" cy="${y}" r="1.1" style="animation-delay:${0.4 + i * 0.03}s"/>`;
+      });
+      [["left_knee", 25], ["right_knee", 26], ["left_elbow", 13], ["right_elbow", 14]].forEach(([k, idx], j) => {
+        const [x, y] = P(idx);
+        out += `<text class="ang" x="${x + 2.5}" y="${y - 2}" style="animation-delay:${1.8 + j * 0.15}s">${Math.round(D.angles[k])}°</text>`;
+      });
+      $("demo-svg").setAttribute("viewBox", `0 0 100 ${H}`);
+      $("demo-svg").innerHTML = out;
+      $("angles").innerHTML = [["Front knee", "left_knee"], ["Back knee", "right_knee"], ["Front elbow", "left_elbow"], ["Back elbow", "right_elbow"]]
+        .map(([label, k]) => `<div class="angle"><span>${label}</span><b data-deg="${D.angles[k]}">0°</b><div class="bar"><i data-w="${(D.angles[k] / 180) * 100}"></i></div></div>`).join("");
+    })();
+
+    function countTo(el, to, decimals = 0, suffix = "") {
+      if (reduce) { el.textContent = Number(to).toLocaleString(undefined, { maximumFractionDigits: decimals }) + suffix; return; }
+      const t0 = performance.now(), dur = 1600;
+      const step = now => {
+        const t = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - t, 4);
+        el.textContent = (to * e).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix;
+        if (t < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+
+    // ---------------------------------------------------------- scroll: reveal, counters, demo
+    const io = new IntersectionObserver(entries => entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      const el = e.target;
+      el.classList.add("in");
+      el.querySelectorAll?.("[data-count]").forEach(b => countTo(b, +b.dataset.count));
+      if (el.id === "viewer") el.classList.add("go");
+      if (el.id === "angles") {
+        el.querySelectorAll("b[data-deg]").forEach(b => countTo(b, +b.dataset.deg, 1, "°"));
+        el.querySelectorAll("i[data-w]").forEach(i => (i.style.width = i.dataset.w + "%"));
+      }
+      io.unobserve(el);
+    }), { threshold: 0.18 });
+    document.querySelectorAll(".rv, #steps").forEach(el => io.observe(el));
+
+    // ---------------------------------------------------------- nav, progress bar, mobile menu
+    const nav = $("nav"), bar = $("progress");
+    const onScroll = () => {
+      nav.classList.toggle("solid", scrollY > 40);
+      const max = document.documentElement.scrollHeight - innerHeight;
+      bar.style.width = (max > 0 ? (scrollY / max) * 100 : 0) + "%";
+    };
+    addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    $("burger").onclick = () => {
+      const open = nav.classList.toggle("open");
+      $("burger").setAttribute("aria-expanded", open);
+    };
+    nav.querySelectorAll(".links a").forEach(a => a.addEventListener("click", () => nav.classList.remove("open")));
+
+    // ---------------------------------------------------------- extra sporty motion
+    if (!reduce) {
+      // crowd camera flashes
+      $("flashes").innerHTML = Array.from({ length: 34 }, () =>
+        `<i style="left:${Math.random() * 100}%;top:${Math.random() * 100}%;animation-delay:${(Math.random() * 4).toFixed(2)}s;animation-duration:${(3 + Math.random() * 3).toFixed(2)}s"></i>`).join("");
+      // sparks around the near stumps
+      $("sparks").innerHTML = Array.from({ length: 10 }, (_, k) => {
+        const a = (-160 + k * 16) * Math.PI / 180, x = 250 + Math.cos(a) * 30, y = 430 + Math.sin(a) * 30;
+        return `<line class="spark" x1="${x}" y1="${y}" x2="${250 + Math.cos(a) * 70}" y2="${430 + Math.sin(a) * 70}"/>`;
+      }).join("");
+      // 3D tilt towards the mouse
+      const tilt = (el, max) => {
+        el.addEventListener("mousemove", e => {
+          const r = el.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+          el.classList.add("tilt-on");
+          el.style.transform = `perspective(900px) rotateY(${x * max}deg) rotateX(${-y * max}deg) translateY(-6px)`;
+        });
+        el.addEventListener("mouseleave", () => { el.style.transform = ""; setTimeout(() => el.classList.remove("tilt-on"), 200); });
+      };
+      document.querySelectorAll(".feature, .aud").forEach(el => tilt(el, 10));
+      const scene = document.querySelector(".scene-wrap"), hero = document.querySelector(".hero");
+      hero.addEventListener("mousemove", e => {
+        const x = e.clientX / innerWidth - .5, y = e.clientY / innerHeight - .5;
+        scene.style.transform = `perspective(1100px) rotateY(${x * 14}deg) rotateX(${-y * 10}deg)`;
+      });
+      hero.addEventListener("mouseleave", () => (scene.style.transform = ""));
+      // magnetic buttons
+      document.querySelectorAll(".mag").forEach(b => {
+        b.addEventListener("mousemove", e => {
+          const r = b.getBoundingClientRect();
+          b.style.transform = `translate(${(e.clientX - r.left - r.width / 2) * .25}px, ${(e.clientY - r.top - r.height / 2) * .35}px)`;
+        });
+        b.addEventListener("mouseleave", () => (b.style.transform = ""));
+      });
+    }
+
+    // In-page links scroll smoothly without adding #section to the address bar.
+    document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener("click", e => {
+      const id = a.getAttribute("href").slice(1);
+      const target = id === "top" ? document.body : document.getElementById(id);
+      if (!target) return;
+      e.preventDefault();
+      if (id === "top") scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+      else target.scrollIntoView({ behavior: reduce ? "auto" : "smooth" });
+    }));
+    if (location.hash || location.pathname !== "/") history.replaceState(null, "", "/");
+    scrollTo({ top: 0, left: 0, behavior: "instant" });
+
+    // Signed-in visitors get a shortcut to their dashboard instead of Log in / Get started.
+    try {
+      if (localStorage.getItem("sc_token")) {
+        const admin = localStorage.getItem("sc_role") === "admin";
+        $("nav-cta").innerHTML = admin ? '<a class="btn btn-red" href="admin.html">Open admin console</a>'
+                                       : '<a class="btn btn-red" href="dashboard.html">Open dashboard</a>';
+      }
+    } catch {}
+  </script>
+</body>
+</html>

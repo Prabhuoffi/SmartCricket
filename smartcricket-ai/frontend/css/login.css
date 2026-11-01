@@ -1,0 +1,99 @@
+@import url("https://fonts.googleapis.com/css2?family=Anton&display=swap");
+
+/* Sign-in page in the landing page brand: turf green, ball red, cream; Anton for headlines. */
+body.login-page {
+  --l-primary: #0f5c3a;
+  --l-red: #c8102e;
+  --l-cream: #f3e9d2;
+  --l-night: #062a1b;
+  --l-night-2: #0a3d27;
+  --l-paper: #fbf7ee;
+  --l-ink: #0b1a12;
+  --l-display: "Anton", "Impact", "Arial Narrow", sans-serif;
+  background: var(--l-paper);
+  color: var(--l-ink);
+}
+body.login-page { background-image: none; }
+
+/* ---------------------------------------------------------------- left: stadium hero */
+.login-page .hero {
+  background: radial-gradient(900px 600px at 78% 45%, rgba(15, 92, 58, .9), transparent 65%),
+              radial-gradient(700px 500px at 10% 100%, rgba(200, 16, 46, .22), transparent 60%),
+              linear-gradient(180deg, var(--l-night) 0%, var(--l-night-2) 100%);
+  color: #fffdf8;
+}
+.login-page .hero .blob { display: none; }
+.login-page .hero .grid-lines { opacity: .5; background-image: linear-gradient(rgba(255, 253, 248, .05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 253, 248, .05) 1px, transparent 1px); background-size: 64px 64px; }
+.login-page .beam { position: absolute; top: -20%; width: 46vw; height: 140%; pointer-events: none; mix-blend-mode: screen; opacity: .5;
+  background: conic-gradient(from 180deg at 50% 0%, transparent 0deg, rgba(255, 253, 248, .16) 8deg, transparent 18deg); filter: blur(6px); }
+.login-page .beam.l { left: -10%; transform-origin: 50% 0; animation: lSweepL 9s ease-in-out infinite; }
+.login-page .beam.r { right: -18%; transform-origin: 50% 0; animation: lSweepR 11s ease-in-out infinite; }
+@keyframes lSweepL { 0%, 100% { transform: rotate(-22deg); } 50% { transform: rotate(-6deg); } }
+@keyframes lSweepR { 0%, 100% { transform: rotate(22deg); } 50% { transform: rotate(6deg); } }
+.login-page .live { display: inline-flex; align-items: center; gap: 9px; padding: 7px 14px 7px 10px; border-radius: 99px; margin: 28px 0 18px;
+  background: rgba(255, 253, 248, .08); border: 1px solid rgba(255, 253, 248, .14); font-size: .74rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+.login-page .live i { width: 9px; height: 9px; border-radius: 50%; background: var(--l-red); animation: lLive 1.6s infinite; }
+@keyframes lLive { 0% { box-shadow: 0 0 0 0 rgba(200, 16, 46, .8); } 70%, 100% { box-shadow: 0 0 0 10px rgba(200, 16, 46, 0); } }
+.login-page .hero h1 { font-family: var(--l-display); font-weight: 400; text-transform: uppercase; letter-spacing: .01em;
+  font-size: clamp(2.8rem, 5.6vw, 5rem); line-height: .95; max-width: 560px; }
+.login-page .hero h1 .red { color: var(--l-red); text-shadow: 0 0 40px rgba(200, 16, 46, .45); }
+.login-page .hero h1 .outline { color: transparent; -webkit-text-stroke: 2px var(--l-cream); }
+.login-page .hero p.lead { color: rgba(255, 253, 248, .74); }
+.login-page .feature { background: rgba(10, 61, 39, .55); border-color: rgba(255, 253, 248, .14); }
+.login-page .feature .fi { background: var(--l-red); color: #fff; }
+.login-page .feature span { color: rgba(243, 233, 210, .78); }
+.login-page .brand small { color: rgba(243, 233, 210, .6); }
+.login-page .big-ball { filter: drop-shadow(0 30px 50px rgba(0, 0, 0, .55)); }
+
+/* ---------------------------------------------------------------- right: cream form */
+.login-page .auth-side { background: radial-gradient(600px 400px at 100% 0%, rgba(15, 92, 58, .08), transparent 60%), var(--l-paper); }
+.login-page .auth-card a.small { color: var(--l-red); }
+.login-page .auth-card h1 { font-family: var(--l-display); font-weight: 400; text-transform: uppercase; letter-spacing: .02em; font-size: clamp(2.4rem, 4vw, 3.2rem); line-height: 1; color: var(--l-ink); }
+.login-page .auth-card h1::after { content: ""; display: block; width: 70px; height: 5px; margin-top: 12px; border-radius: 5px; background: var(--l-red); }
+.login-page .auth-card .muted { color: rgba(11, 26, 18, .62); }
+.login-page .seg { background: #efe7d3; }
+.login-page .seg button { color: rgba(11, 26, 18, .6); }
+.login-page .seg button.on { color: var(--l-primary); }
+.login-page .seg .thumb-ind { background: #fff; box-shadow: 0 6px 16px -8px rgba(15, 92, 58, .5); }
+.login-page .field input { background: #fff; border-color: rgba(11, 26, 18, .12); color: var(--l-ink); }
+.login-page .field input:focus { border-color: var(--l-primary); box-shadow: 0 0 0 4px rgba(15, 92, 58, .14); }
+.login-page .field input:focus + label, .login-page .field input:not(:placeholder-shown) + label { color: var(--l-primary); }
+.login-page #submit { background: var(--l-red); border-radius: 999px; font-weight: 800; letter-spacing: .02em;
+  box-shadow: 0 14px 30px -10px rgba(200, 16, 46, .7); }
+.login-page #submit:hover { background: #a90d26; box-shadow: 0 18px 36px -12px rgba(200, 16, 46, .85); }
+.login-page .alert.error { background: rgba(200, 16, 46, .08); color: #a90d26; }
+
+/* login page always uses the light form panel, even if the app is in dark mode */
+:root[data-theme="dark"] body.login-page .auth-side { color: var(--l-ink); }
+:root[data-theme="dark"] body.login-page .field input { background: #fff; color: var(--l-ink); }
+
+/* ---------------------------------------------------------------- left panel layout (aligned, nothing clipped) */
+.login-page .hero { display: flex; flex-direction: column; justify-content: space-between; gap: 28px; padding: clamp(32px, 4.5vw, 56px); min-height: 100vh; }
+.login-page .hero > #hero-brand, .login-page .hero > div:not([class]):not([id]), .login-page .hero > p { position: relative; z-index: 1; }
+.login-page .hero > .beam, .login-page .hero > .grid-lines { position: absolute; }
+.login-page .hero > .grid-lines { inset: 0; }
+.login-page #hero-brand { margin: 0; }
+.login-page .live { margin: 0 0 22px; }
+.login-page .hero h1 { font-size: clamp(2.4rem, 4.3vw, 3.9rem); line-height: .96; max-width: 520px; }
+.login-page .hero p.lead { font-size: 1rem; line-height: 1.6; max-width: 460px; margin: 20px 0 24px; }
+.login-page .features { max-width: 430px; }
+.login-page .feature { padding: 10px 14px; gap: 12px; max-width: none; }
+.login-page .feature + .feature { margin-top: 8px; }
+.login-page .feature .fi { width: 32px; height: 32px; border-radius: 9px; }
+.login-page .feature b { font-size: .9rem; }
+.login-page .feature span { font-size: .78rem; }
+.login-page .hero > p.small { margin: 0; }
+
+/* the ball: fully inside the panel, top right, with an orbit ring and a floor shadow */
+.login-page #big-ball { position: absolute; right: 8%; top: 9%; width: clamp(140px, 14vw, 200px); aspect-ratio: 1; pointer-events: none; z-index: 0;
+  animation: lFloat 6s ease-in-out infinite; }
+.login-page #big-ball .big-ball { position: static; width: 100%; height: 100%; animation: none; filter: drop-shadow(0 22px 34px rgba(0, 0, 0, .55)); }
+.login-page #big-ball .big-ball .seam { animation: lSpin 14s linear infinite; transform-box: fill-box; transform-origin: center; }
+.login-page #big-ball::before { content: ""; position: absolute; inset: -22%; border-radius: 50%; border: 2px dashed rgba(243, 233, 210, .28); animation: lSpin 28s linear infinite; }
+.login-page #big-ball::after { content: ""; position: absolute; left: 15%; right: 15%; bottom: -26%; height: 10%; border-radius: 50%; background: rgba(0, 0, 0, .45); filter: blur(8px);
+  animation: lShadow 6s ease-in-out infinite; }
+@keyframes lFloat { 50% { transform: translateY(-14px); } }
+@keyframes lShadow { 50% { transform: scale(.8); opacity: .6; } }
+@keyframes lSpin { to { transform: rotate(360deg); } }
+@media (max-width: 1200px) { .login-page #big-ball { width: 130px; right: 6%; top: 7%; } }
+@media (max-width: 900px) { .login-page #big-ball { display: none; } .login-page .hero { min-height: 0; } }

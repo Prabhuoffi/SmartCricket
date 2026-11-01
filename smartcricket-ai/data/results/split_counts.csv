@@ -1,0 +1,17 @@
+label,train,val,test
+Cover Drive,553,109,110
+Defensive,420,81,104
+Down The Wicket,671,134,85
+Flick,666,146,121
+Hook,372,72,90
+Late Cut,220,49,37
+Lofted Legside,841,137,145
+Lofted Offside,764,139,120
+Pull,533,137,75
+Reverse Sweep,169,46,37
+Scoop,211,42,26
+Square Cut,738,165,120
+Straight Drive,307,54,62
+Sweep,639,146,123
+Upper Cut,200,41,34
+Total,7304,1498,1289

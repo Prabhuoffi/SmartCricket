@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Shot analysis</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <div class="page-head">
+        <div class="reveal">
+          <a href="history.html" class="small" style="font-weight:600">← History</a>
+          <h1 style="margin-top:6px" id="title">Shot analysis</h1>
+          <p class="muted" id="meta"><span class="skeleton" style="display:inline-block;width:260px;height:16px"></span></p>
+        </div>
+        <div class="reveal" style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="ghost" id="report"></button>
+          <button class="danger" id="delete"></button>
+        </div>
+      </div>
+      <div id="banner"></div>
+      <div id="qstrip"></div>
+
+      <div class="grid split">
+        <!-- frames -->
+        <div class="card reveal" style="padding:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:2px 4px 12px;flex-wrap:wrap">
+            <h2 style="margin:0" id="frames-title">What the model saw</h2>
+            <div class="toggle" id="view">
+              <button data-v="heat" class="on" id="heat-btn">Heatmap</button>
+              <button data-v="frame">Original</button>
+            </div>
+          </div>
+          <div class="player" id="player">
+            <div class="skeleton" style="position:absolute;inset:0" id="pskel"></div>
+            <img id="img" alt="Clip frame">
+            <span class="chip info badge-tl" id="fno">Frame 1 / 15</span>
+            <span class="chip low badge-tr" id="keyb" hidden>★ Key frame</span>
+          </div>
+          <div class="controls">
+            <button class="play" id="play" aria-label="Play"></button>
+            <input type="range" id="slider" min="0" max="14" value="0" aria-label="Frame">
+          </div>
+          <div style="margin-top:16px">
+            <b class="small" id="tl-title">Key-frame timeline</b>
+            <span class="faint small" id="tl-sub"> · how much each frame influenced the decision (attention)</span>
+            <div class="timeline" id="timeline"></div>
+            <div class="tl-axis" id="axis"></div>
+          </div>
+          <p class="faint small" style="margin:12px 4px 0" id="heat-note">Warm colours mark the regions that pushed the model towards this shot. A heatmap shows where the model looked; it does not prove it reasoned correctly.</p>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div class="card reveal" id="hero-card">
+            <div class="shot-hero">
+              <div class="ring" id="ring"><div><b id="conf">0%</b><span>confidence</span></div></div>
+              <div style="flex:1;min-width:180px">
+                <div class="faint small" style="font-weight:600;text-transform:uppercase;letter-spacing:.06em">Predicted shot</div>
+                <div class="shot-name grad-text" id="shot">…</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px" id="chips"></div>
+              </div>
+            </div>
+            <div style="margin-top:20px" id="top3"></div>
+          </div>
+          <div class="card reveal coach-card" style="flex:1">
+            <div id="coach-head"></div>
+            <div class="chat" id="chat"></div>
+            <div class="suggest" id="suggest"></div>
+            <form class="chat-form" id="chat-form">
+              <input class="plain" id="q" placeholder="Ask about this shot..." maxlength="500" autocomplete="off">
+              <button id="send" aria-label="Send"></button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="card reveal" id="three-d" style="margin-top:18px" hidden></div>
+
+      <!-- reference comparison -->
+      <div class="card reveal" style="margin-top:18px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
+          <div><h2 style="margin-bottom:4px">Compare with a reference clip</h2>
+            <p class="muted small" style="margin:0">Your joint angles are lined up with a model player's using Dynamic Time Warping, so different speeds still match.</p></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <select class="select" id="refs"></select>
+            <button id="cmp-btn"></button>
+          </div>
+        </div>
+        <div id="cmp-empty" class="cmp-empty" hidden></div>
+        <div id="cmp" hidden style="margin-top:20px">
+          <div class="grid two">
+            <div>
+              <div style="display:flex;gap:24px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px">
+                <div><div class="faint small">DTW distance</div><div class="stat-big" id="dist">–</div></div>
+                <p class="muted small" id="dist-note" style="margin:0;flex:1;min-width:180px"></p>
+              </div>
+              <b class="small">Average difference per joint</b>
+              <div class="faint small" style="margin-bottom:10px">Left of centre: your joint is more bent than the reference. Right: more open.</div>
+              <div class="diffbars" id="diffs"></div>
+            </div>
+            <div>
+              <div class="side-by-side">
+                <figure><img id="pf" alt="Your frame"><figcaption id="pcap">You</figcaption></figure>
+                <figure><img id="rf" alt="Reference frame"><figcaption id="rcap">Reference</figcaption></figure>
+              </div>
+              <input type="range" id="aslider" min="0" value="0" style="width:100%;margin-top:10px" aria-label="Aligned step">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:10px;flex-wrap:wrap">
+                <b class="small">Angle over the stroke</b>
+                <select class="select" id="joint" style="min-width:160px;padding:6px 10px"></select>
+              </div>
+              <div style="position:relative;height:200px;margin-top:8px"><canvas id="achart"></canvas></div>
+            </div>
+          </div>
+          <p class="faint small" style="margin:14px 0 0">Angles are 2D estimates from one camera; compare clips filmed from a similar angle. Differences describe movement, not right or wrong technique.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js?v=48"></script>
+  <script src="js/coach.js?v=48"></script>
+  <script>
+    requireLogin();
+    sidebar("history.html");
+    const $ = id => document.getElementById(id);
+    const id = new URLSearchParams(location.search).get("id");
+    $("report").innerHTML = `${icon("download")} Download PDF`;
+    $("delete").innerHTML = `${icon("trash")} Delete`;
+    $("coach-head").innerHTML = coachHeader("About this clip");
+    $("play").innerHTML = icon("play");
+    $("cmp-btn").innerHTML = `${icon("compare")} Compare`;
+    revealAll();
+
+    let A, S, view = "frame", cur = 0, timer = null, card3d = null;
+    const urls = { frame: [], heat: [], skel: [] };
+    // which drawn-over frames this result has: body skeleton, Grad-CAM heatmap, or none (same rule as the server)
+    const overlayKind = s => (s.overlay === "skeleton" ? "skel" : s.has_heatmaps ? "heat" : null);
+
+    (async () => {
+      A = await api(`/api/analyses/${id}`);
+      if (A.mode !== "video") return location.replace(`analysis.html?id=${id}`);
+      S = A.summary;
+      $("qstrip").innerHTML = qualityHtml(S.quality);
+      if (S.world_seq) {
+        $("three-d").hidden = false;
+        card3d = threeDCard($("three-d"), () => S.world_seq[cur], () => S.angles_seq[cur], () => S.angles_3d_seq[cur] || {});
+      }
+      const MOVE = !A.shot;   // movement analysis: body tracking only, no shot label
+      document.title = `SmartCricket AI: ${MOVE ? "Movement analysis" : A.shot}`;
+      if (MOVE) {
+        $("title").textContent = "Movement analysis";
+        $("frames-title").textContent = "Your body, frame by frame";
+        $("heat-btn").textContent = "Skeleton";
+        $("tl-title").textContent = "Movement timeline";
+        $("tl-sub").textContent = " · how much your body moved at each frame";
+        $("keyb").textContent = "★ Most movement";
+        $("q").placeholder = "Ask about your movement...";
+      }
+      const bolt = icon("bolt").replace("<svg", '<svg style="width:14px;height:14px;vertical-align:-2px"');
+      $("meta").innerHTML = [fmtDate(A.created_at), esc(A.original_name), A.session_label && esc(A.session_label), `${bolt} ${A.latency_ms} ms`].filter(Boolean).join(" · ");
+      if (A.uncertain) $("banner").innerHTML = alertHtml("warn", `The model is not confident about this clip (${Math.round(A.confidence * 100)}%). Treat the shot label as a guess, and try a clearer, side-on clip of a single stroke.`);
+
+      MOVE ? movementHero() : hero();
+      timeline();
+      if (MOVE) $("heat-note").textContent = "Green lines are your tracked body. Points the camera could not see clearly are left out rather than guessed.";
+      else if (!S.has_heatmaps) { view = "frame"; $("view").hidden = true; $("heat-note").textContent = "The pose-only model does not use the picture, so there are no heatmaps for this clip."; }
+      const ov = overlayKind(S);
+      if (ov) { view = ov; $("heat-btn").dataset.v = ov; }
+      const kinds = ov ? [ov, "frame"] : ["frame"];
+      await Promise.all(kinds.flatMap(k => Array.from({ length: S.frames }, (_, t) => blobUrl(`/api/files/${id}/${k}/${t}`).then(u => (urls[k][t] = u)))));
+      $("pskel").remove();
+      show(S.key_frame);
+
+      const T = Math.round((A.confidence || 0) * 100);
+      if (MOVE) initCoach(id, A.messages,
+        `Hi! I tracked your body in ${S.tracked_frames} of ${S.frames} frames. You moved most around frame ${S.key_frame + 1}. Ask me how your joints moved.`,
+        ["How did my front knee move?", "Where did I move the most?", "What should I practise next?"]);
+      else initCoach(id, A.messages, A.uncertain
+        ? `Hi! The model was unsure about this clip (${T}%), so I'll be careful with conclusions. Ask me what it saw.`
+        : `Hi! The model thinks this is a ${A.shot} (${T}% confidence). Frame ${S.key_frame + 1} mattered most. Ask me anything about it.`,
+        [`Why ${A.shot} and not ${A.top3[1]?.shot || "another shot"}?`, "Which frame mattered most?", "What should I practise next?"]);
+      refs();
+      if (A.dtw) drawCompare(A.dtw);
+    })().catch(e => { $("banner").innerHTML = alertHtml("error", e.message); });
+
+    // ------------------------------------------------------------ hero + top-3
+    function hero() {
+      $("shot").textContent = A.shot;
+      const pct = A.confidence * 100, r = $("ring");
+      r.style.setProperty("--c", A.uncertain ? "var(--gold)" : "var(--pitch)");
+      requestAnimationFrame(() => requestAnimationFrame(() => r.style.setProperty("--p", pct)));
+      countUp($("conf"), pct, { suffix: "%", duration: 1400 });
+      $("chips").innerHTML = `<span class="chip info">${esc(S.model_label)}</span>` +
+        `<span class="chip ${A.uncertain ? "low" : "ok"}">${A.uncertain ? "uncertain" : "confident"}</span>` +
+        `<span class="chip off" title="Temperature used to calibrate the confidence">T = ${S.temperature}</span>`;
+      $("top3").innerHTML = `<b class="small">Top 3 shots</b><div style="height:10px"></div>` + A.top3.map((p, i) => `
+        <div class="prob ${i === 0 ? "first" : ""}"><div class="row"><span>${esc(p.shot)}</span><span>${(p.prob * 100).toFixed(1)}%</span></div>
+        <div class="track"><div class="fill" data-w="${p.prob * 100}"></div></div></div>`).join("");
+      requestAnimationFrame(() => requestAnimationFrame(() =>
+        document.querySelectorAll(".prob .fill").forEach((f, i) => { f.style.transitionDelay = `${200 + i * 150}ms`; f.style.width = f.dataset.w + "%"; })));
+    }
+
+    // ------------------------------------------------------------ movement analysis card (no shot label)
+    function movementHero() {
+      const R = S.joint_ranges || {}, knees = Object.entries(R).filter(([j]) => j.endsWith("knee")).map(([, v]) => v.min);
+      $("hero-card").innerHTML = `
+        <div class="mv-head"><span class="mv-ic">${icon("body")}</span><div>
+          <div class="faint small" style="font-weight:700;text-transform:uppercase;letter-spacing:.06em">Movement analysis</div>
+          <div class="mv-title">Body tracked in ${S.tracked_frames} of ${S.frames} frames</div></div></div>
+        <div class="mv-stats">
+          <div><b>${S.key_frame + 1}</b><span>frame with most movement</span></div>
+          <div><b>${knees.length ? Math.min(...knees).toFixed(0) + "°" : "–"}</b><span>deepest knee bend</span></div>
+          <div><b>${Object.keys(R).length}<small>/8</small></b><span>joints measured</span></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 4px"><span class="chip info">${esc(S.model_label)}</span>
+          <span class="chip low">Shot name: added after model training</span></div>
+        <b class="small" style="display:block;margin-top:16px">Joint range through the shot</b>
+        <div class="faint small" style="margin-bottom:10px">Bar runs from the most bent to the most open angle (0° to 180°). Dot = frame with most movement.</div>
+        <div class="jr">${Object.entries(R).map(([j, v]) => {
+          const at = S.angles_seq[S.key_frame]?.[j];
+          return `<div class="jr-row"><span>${prettyJoint(j)}</span><div class="jr-t"><i style="left:${v.min / 1.8}%;width:${Math.max(1, v.range / 1.8)}%"></i>
+            ${at != null ? `<em style="left:${at / 1.8}%"></em>` : ""}</div><span class="jr-v">${v.min.toFixed(0)}–${v.max.toFixed(0)}°</span></div>`;
+        }).join("") || '<p class="muted small">No joints were clearly visible in this clip.</p>'}</div>`;
+    }
+
+    // ------------------------------------------------------------ frames, player, timeline
+    function timeline() {
+      const att = S.attention, max = Math.max(...att);
+      $("timeline").innerHTML = att.map((a, t) => `<div class="tb ${t === S.key_frame ? "key" : ""}" data-t="${t}" data-h="${Math.max(6, (a / max) * 100)}" title="Frame ${t + 1}: ${(a * 100).toFixed(1)}% of attention"></div>`).join("");
+      $("axis").innerHTML = att.map((_, t) => `<span>${t + 1}</span>`).join("");
+      $("timeline").querySelectorAll(".tb").forEach((b, i) => {
+        b.onclick = () => { stop(); show(+b.dataset.t); };
+        setTimeout(() => (b.style.height = b.dataset.h + "%"), reduceMotion ? 0 : 300 + i * 50);
+      });
+      $("slider").max = S.frames - 1;
+    }
+    function show(t) {
+      cur = t;
+      card3d?.redraw();   // the 3D view follows the frame slider
+      if (urls[view][t]) $("img").src = urls[view][t];
+      $("slider").value = t;
+      $("fno").textContent = `Frame ${t + 1} / ${S.frames}`;
+      $("keyb").hidden = t !== S.key_frame;
+      $("timeline").querySelectorAll(".tb").forEach(b => b.classList.toggle("cur", +b.dataset.t === t));
+    }
+    function stop() { clearInterval(timer); timer = null; $("play").innerHTML = icon("play"); $("play").setAttribute("aria-label", "Play"); }
+    $("play").onclick = () => {
+      if (timer) return stop();
+      $("play").innerHTML = icon("pause"); $("play").setAttribute("aria-label", "Pause");
+      timer = setInterval(() => show((cur + 1) % S.frames), 220);
+    };
+    $("slider").oninput = e => { stop(); show(+e.target.value); };
+    document.querySelectorAll("#view button").forEach(b => (b.onclick = () => {
+      view = b.dataset.v;
+      document.querySelectorAll("#view button").forEach(x => x.classList.toggle("on", x === b));
+      show(cur);
+    }));
+    document.addEventListener("keydown", e => {
+      if (e.target.tagName === "INPUT" || !S) return;
+      if (e.key === "ArrowRight") { stop(); show(Math.min(S.frames - 1, cur + 1)); }
+      if (e.key === "ArrowLeft") { stop(); show(Math.max(0, cur - 1)); }
+    });
+
+    // ------------------------------------------------------------ reference comparison
+    async function refs() {
+      const all = await api("/api/references");
+      if (!all.length) {
+        $("refs").hidden = true; $("cmp-btn").hidden = true;
+        $("cmp-empty").hidden = false;
+        $("cmp-empty").innerHTML = `${icon("info")} No reference clips yet. Your coach (the admin) adds clean example shots on the Reference clips page; they will appear here to compare against.`;
+        return;
+      }
+      const same = A.shot ? all.filter(r => r.shot === A.shot) : [], other = all.filter(r => !same.includes(r));
+      const opt = r => `<option value="${r.id}">${esc(r.label)}</option>`;
+      $("refs").innerHTML = (same.length ? `<optgroup label="Same shot: ${esc(A.shot)}">${same.map(opt).join("")}</optgroup>` : "") +
+        (other.length ? `<optgroup label="${same.length ? "Other shots" : "Reference clips"}">${other.map(opt).join("")}</optgroup>` : "");
+      if (A.dtw) $("refs").value = A.dtw.reference_id;
+    }
+    $("cmp-btn").onclick = async () => {
+      const b = $("cmp-btn");
+      if (!$("refs").value) return toast("Choose a reference clip first", "warn");
+      b.disabled = true; b.innerHTML = '<span class="spinner"></span> Comparing';
+      try {
+        const r = await api(`/api/video/${id}/compare`, { method: "POST", body: { reference_id: +$("refs").value } });
+        A.dtw = r;
+        drawCompare(r, true);
+        toast("Comparison ready", "ok");
+      } catch (e) { toast(e.message, "error"); }
+      finally { b.disabled = false; b.innerHTML = `${icon("compare")} Compare`; }
+    };
+
+    let chart, replot = null, refUrls = {};
+    document.addEventListener("themechange", () => replot?.());
+    async function drawCompare(d, scroll = false) {
+      $("cmp").hidden = false;
+      countUp($("dist"), d.distance, { decimals: 1, suffix: "°" });
+      $("dist-note").textContent = `Average angle gap per aligned frame against "${d.reference_label}". Lower means your movement is closer to the reference.`;
+      $("diffs").innerHTML = d.joints.map(j => {
+        const v = d.per_joint[j];
+        if (!v) return `<div class="diffbar"><span>${prettyJoint(j)}</span><div class="t"></div><span class="faint small">not seen</span></div>`;
+        const w = Math.min(50, (Math.abs(v.mean_diff) / 40) * 50), left = v.mean_diff < 0 ? 50 - w : 50;
+        const col = v.mean_diff < 0 ? "linear-gradient(90deg,#f59e0b,#ef4444)" : "linear-gradient(90deg,#1f9d55,#10b981)";
+        return `<div class="diffbar"><span>${prettyJoint(j)}</span><div class="t"><i style="left:50%;width:0;background:${col}" data-l="${left}" data-w="${w}"></i></div><span>${v.mean_diff > 0 ? "+" : ""}${v.mean_diff}°</span></div>`;
+      }).join("");
+      requestAnimationFrame(() => requestAnimationFrame(() => document.querySelectorAll(".diffbar i").forEach(i => { i.style.left = i.dataset.l + "%"; i.style.width = i.dataset.w + "%"; })));
+
+      const need = [...new Set(d.path.map(p => p[1]))].filter(t => !refUrls[`${d.reference_id}_${t}`]);
+      await Promise.all(need.map(t => blobUrl(`/api/references/${d.reference_id}/frame/${t}`).then(u => (refUrls[`${d.reference_id}_${t}`] = u)).catch(() => {})));
+      $("aslider").max = d.path.length - 1;
+      const step = k => {
+        const [i, j] = d.path[k];
+        $("pf").src = urls.frame[i]; $("rf").src = refUrls[`${d.reference_id}_${j}`] || "";
+        $("pcap").textContent = `You · frame ${i + 1}`; $("rcap").textContent = `${d.reference_label} · frame ${j + 1}`;
+      };
+      $("aslider").oninput = e => step(+e.target.value);
+      $("aslider").value = 0; step(0);
+
+      const seen = d.joints.filter(j => d.per_joint[j]);
+      $("joint").innerHTML = seen.map(j => `<option value="${j}">${prettyJoint(j)}</option>`).join("");
+      const preferred = seen.find(j => j.endsWith("knee")) || seen[0];
+      if (preferred) $("joint").value = preferred;
+      const plot = () => {
+        const k = d.joints.indexOf($("joint").value), dark = document.documentElement.dataset.theme === "dark";
+        chart?.destroy();
+        if (k < 0) return;
+        chart = new Chart($("achart"), {
+          type: "line",
+          data: { labels: d.path.map((_, s) => s + 1), datasets: [
+            { label: "You", data: d.path.map(([i]) => d.player[i][k]), borderColor: "#0f5c3a", backgroundColor: "#0f5c3a", tension: .35, spanGaps: true, borderWidth: 3, pointRadius: 2 },
+            { label: d.reference_label, data: d.path.map(([, j]) => d.reference[j][k]), borderColor: "#10b981", backgroundColor: "#10b981", borderDash: [6, 4], tension: .35, spanGaps: true, borderWidth: 2.5, pointRadius: 2 },
+          ] },
+          options: { maintainAspectRatio: false, animation: { duration: reduceMotion ? 0 : 1100 },
+            plugins: { legend: { labels: { color: dark ? "#a7b2c6" : "#4a5568", boxWidth: 14 } } },
+            scales: { x: { title: { display: true, text: "aligned step", color: dark ? "#8a94a6" : "#6b7280" }, grid: { display: false }, ticks: { color: dark ? "#8a94a6" : "#6b7280" } },
+                      y: { grid: { color: dark ? "rgba(148,163,184,.12)" : "rgba(15,30,60,.06)" }, ticks: { color: dark ? "#8a94a6" : "#6b7280", callback: v => v + "°" } } } },
+        });
+      };
+      $("joint").onchange = plot;
+      replot = plot;
+      plot();
+      if (scroll) $("cmp").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
+    }
+
+    // ------------------------------------------------------------ actions
+    $("report").onclick = async () => {
+      const b = $("report"), label = b.innerHTML;
+      b.disabled = true; b.innerHTML = '<span class="spinner" style="border-color:rgba(11,26,18,.2);border-top-color:#c8102e"></span> Preparing PDF';
+      try { await openBlob(`/api/reports/${id}/pdf`, `SmartCricket_${A && !A.shot ? "Movement" : "Shot"}_analysis_${id}.pdf`); toast("PDF downloaded", "ok"); }
+      catch (e) { toast(e.message, "error"); }
+      finally { b.disabled = false; b.innerHTML = label; }
+    };
+    $("delete").onclick = async () => {
+      if (!confirm("Delete this analysis and its video? This cannot be undone.")) return;
+      $("delete").disabled = true;
+      try { await api(`/api/analyses/${id}`, { method: "DELETE" }); toast("Analysis deleted", "ok"); setTimeout(() => go("history.html"), 400); }
+      catch (e) { toast(e.message, "error"); $("delete").disabled = false; }
+    };
+  </script>
+</body>
+</html>

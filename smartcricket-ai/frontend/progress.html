@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Progress</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <div class="page-head">
+        <div class="reveal"><h1>My progress</h1><p class="muted">Levels, XP and your weekly report from the coach.</p></div>
+        <a class="btn reveal" href="training.html" id="cta"></a>
+      </div>
+
+      <!-- level ladder -->
+      <section class="ladder reveal" id="ladder"></section>
+
+      <div class="grid split" style="margin-top:18px">
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">Next level</span><h2 id="next-title">What you need</h2></div></div>
+          <div class="reqs" id="reqs"></div>
+        </div>
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">Experience</span><h2>XP breakdown</h2></div><span class="chip ok" id="xp-total"></span></div>
+          <div class="xp-rows" id="xp-rows"></div>
+        </div>
+      </div>
+
+      <!-- weekly report -->
+      <div class="card reveal week-card" style="margin-top:18px">
+        <div class="card-head"><div><span class="eyebrow-s">Weekly report</span><h2 id="week-title">This week</h2></div>
+          <div class="seg-tabs" role="tablist"><button type="button" class="on" data-o="0">This week</button><button type="button" data-o="1">Last week</button></div></div>
+        <div class="week-tiles" id="week-tiles"></div>
+        <div class="coach-note" id="week-note"></div>
+      </div>
+
+      <div class="card reveal" style="margin-top:18px" id="live-card" hidden>
+        <div class="card-head"><div><span class="eyebrow-s">Live mirror</span><h2>Recent live sessions</h2></div>
+          <a href="live.html" class="small" style="font-weight:700">Open live mirror →</a></div>
+        <div class="feed" id="live-list"></div>
+      </div>
+
+      <div class="grid two" style="margin-top:18px">
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">Consistency</span><h2>Training days and drills, 8 weeks</h2></div></div>
+          <div style="position:relative;height:230px"><canvas id="weeks"></canvas></div>
+        </div>
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">Trend</span><h2>Front knee, weekly average</h2></div><span class="chip info">degrees</span></div>
+          <div style="position:relative;height:230px"><canvas id="knee"></canvas></div>
+          <div id="knee-empty" class="muted small" hidden style="padding:30px 0;text-align:center">Analyse photos across a few weeks to see this trend.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js?v=48"></script>
+  <script>
+    requireLogin();
+    sidebar("progress.html");
+    const $ = id => document.getElementById(id);
+    $("cta").innerHTML = `${icon("dumbbell")} Today's training`;
+    revealAll();
+    let P;
+    const wk = iso => new Date(iso + "T00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" });
+
+    function ladder(st) {
+      $("ladder").innerHTML = `<div class="ld-track"><i class="ld-fill" style="--to:${((st.level - 1 + (st.next ? st.progress : 0)) / 4) * 100}%"></i></div>` +
+        st.levels.map(l => `<div class="ld-step${l.reached ? " on" : ""}${l.level === st.level ? " cur" : ""}">
+          <span class="ld-dot">${l.level === st.level ? BALL : l.reached ? icon("check") : l.level}</span>
+          <b>${esc(l.name)}</b><small>Level ${l.level}</small></div>`).join("");
+    }
+
+    function reqs(st) {
+      if (!st.next) { $("next-title").textContent = "Top level reached"; $("reqs").innerHTML = `<p class="muted">You are a Pro. Keep your streak alive!</p>`; return; }
+      $("next-title").innerHTML = `To reach L${st.next.level} ${esc(st.next.name)}`;
+      $("reqs").innerHTML = st.next.requirements.map(r => `<div class="req${r.done ? " done" : ""}">
+        <span class="rq-ic">${icon(r.done ? "check" : "target")}</span>
+        <div><div class="rq-top"><b>${esc(r.label)}</b><span>${Math.min(r.have, r.need)} / ${r.need}</span></div>
+          <div class="rq-bar"><i data-w="${Math.min(1, r.have / r.need) * 100}"></i></div></div></div>`).join("");
+      const HOW = { analyses: "analyse another photo or clip", best_streak: "practise on more days in a row (an analysis, a drill, a check-in or a live session counts)",
+                    full_photos: "upload a side-on photo with your whole body in view", plan_weeks: "finish all drills on 5 days of a week" };
+      const todo = st.next.requirements.filter(r => !r.done);
+      if (todo.length) $("reqs").insertAdjacentHTML("beforeend", `<div class="reqs-tip"><b>Next step:</b> ${todo.map(r => esc(HOW[r.key] || r.label)).join("; and ")}.</div>`);
+      requestAnimationFrame(() => requestAnimationFrame(() => $("reqs").querySelectorAll("i[data-w]").forEach(i => (i.style.width = i.dataset.w + "%"))));
+    }
+
+    function xpRows(st, rules) {
+      const p = st.xp.parts, max = Math.max(1, ...Object.values(p));
+      $("xp-total").textContent = `${st.xp.total} XP`;
+      const rows = [["analysis", "Analyses", `${rules.analysis} each`], ["drill", "Drills done", `${rules.drill} each`],
+        ["streak", "Practice days", `${rules.active_day} + ${rules.streak_day} on a streak`], ["quiz", "Daily quiz", `${rules.quiz_right} right, ${rules.quiz_wrong} for trying`],
+        ["checkin", "Check-ins", `${rules.checkin} each`], ["live", "Live sessions", `${rules.live} each`]];
+      $("xp-rows").innerHTML = rows.map(([k, l, how]) => `<div class="xr"><div><b>${l}</b><small>${how}</small></div>
+        <div class="xr-bar"><i data-w="${(p[k] / max) * 100}"></i></div><span>${p[k]}</span></div>`).join("");
+      requestAnimationFrame(() => requestAnimationFrame(() => $("xp-rows").querySelectorAll("i[data-w]").forEach(i => (i.style.width = i.dataset.w + "%"))));
+    }
+
+    async function week(offset) {
+      const w = P.weeks[P.weeks.length - 1 - offset];
+      $("week-title").textContent = `${offset ? "Last week" : "This week"} · ${wk(w.week_start)} – ${wk(w.week_end)}`;
+      const ch = w.knee_change_deg;
+      $("week-tiles").innerHTML = [
+        [`${w.days_trained}<small>/${w.week_in_progress ? w.days_so_far : 7}</small>`, w.week_in_progress ? "Days trained so far" : "Days trained"],
+        [w.drills_planned ? `${w.drills_done}<small>/${w.drills_planned}</small>` : "–", "Drills done"],
+        [w.balls_faced, "Balls faced"],
+        [ch == null ? (w.knee_avg_deg != null ? `${w.knee_avg_deg}°` : "–") : `${ch > 0 ? "+" : ""}${ch}°`, ch == null ? "Front knee avg" : "Knee vs last week"],
+        [`${w.quiz_correct}<small>/${w.quiz_answered}</small>`, "Quiz right"],
+      ].map(([v, l]) => `<div class="wt"><b>${v}</b><span>${l}</span></div>`).join("");
+      const note = $("week-note");
+      const paint = text => { note.innerHTML = `<span class="cn-ball">${BALL}</span><div><b>Coach's summary</b><p>${esc(text)}</p></div>
+        <button type="button" class="ghost" id="regen">${icon("spark")} ${text ? "Rewrite" : "Write"}</button>`; note.querySelector("#regen").onclick = () => write(true); };
+      async function write(refresh) {
+        note.innerHTML = `<span class="cn-ball spin">${BALL}</span><div><b>Coach's summary</b><p class="muted">Your coach is writing this week's summary…</p></div>`;
+        try { const r = await api(`/api/train/week/summary?offset=${offset}&refresh=${refresh}`, { method: "POST" }); w.summary = r.text; paint(r.text); }
+        catch (e) { paint(w.summary || ""); toast(e.message, "error"); }
+      }
+      write(false);  // the server reuses the stored summary unless this week's numbers changed
+    }
+
+    function charts() {
+      const W = P.weeks, labels = W.map(w => wk(w.week_start));
+      new Chart($("weeks"), {
+        data: { labels, datasets: [
+          { type: "bar", label: "Days trained", data: W.map(w => w.days_trained), backgroundColor: W.map((w, i) => i === W.length - 1 ? "#c8102e" : "#0f5c3a"), borderRadius: 6, maxBarThickness: 26, yAxisID: "y" },
+          { type: "line", label: "Drills finished %", data: W.map(w => w.completion_pct), borderColor: "#f59e0b", backgroundColor: "#f59e0b", tension: .35, spanGaps: true, pointRadius: 4, yAxisID: "y2" }] },
+        options: { maintainAspectRatio: false, animation: { duration: reduceMotion ? 0 : 1100 }, plugins: { legend: { labels: { boxWidth: 12 } } },
+          scales: { x: { grid: { display: false } }, y: { beginAtZero: true, max: 7, ticks: { precision: 0 }, grid: { color: "rgba(11,26,18,.06)" } },
+            y2: { position: "right", min: 0, max: 100, ticks: { callback: v => v + "%" }, grid: { display: false } } } },
+      });
+      const knee = W.filter(w => w.knee_avg_deg != null);
+      if (!knee.length) { $("knee").parentElement.hidden = true; $("knee-empty").hidden = false; return; }
+      const ctx = $("knee").getContext("2d"), g = ctx.createLinearGradient(0, 0, 0, 230);
+      g.addColorStop(0, "rgba(200,16,46,.25)"); g.addColorStop(1, "rgba(200,16,46,0)");
+      new Chart(ctx, { type: "line",
+        data: { labels: knee.map(w => wk(w.week_start)), datasets: [{ data: knee.map(w => w.knee_avg_deg), borderColor: "#c8102e", backgroundColor: g, fill: true, tension: .4,
+          borderWidth: 3, pointRadius: 5, pointBackgroundColor: "#fff", pointBorderColor: "#0f5c3a", pointBorderWidth: 2.5 }] },
+        options: { maintainAspectRatio: false, animation: { duration: reduceMotion ? 0 : 1300 }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.y}°` } } },
+          scales: { x: { grid: { display: false } }, y: { suggestedMin: 90, suggestedMax: 180, ticks: { callback: v => v + "°" }, grid: { color: "rgba(11,26,18,.06)" } } } } });
+    }
+
+    (async () => {
+      P = await api("/api/train/progress");
+      ladder(P.status); reqs(P.status); xpRows(P.status, P.xp_rules); week(0); charts();
+      if (P.live_sessions.length) {
+        $("live-card").hidden = false;
+        const N = { knee: "front knee", hip: "hip", elbow: "elbow", shoulder: "arm raise", tilt: "shoulder tilt" };
+        $("live-list").innerHTML = P.live_sessions.map(x => `<div class="it"><span class="dot">${icon("video")}</span>
+          <div style="min-width:0;flex:1"><b>${esc(x.title)}</b>${x.completed ? ' <span class="chip ok">target reached</span>' : ""}
+          <small>${wk(x.day)} · ${Math.round(x.duration_s / 60) || "<1"} min${x.reps ? ` · ${x.reps} reps` : ""}${x.hold_s ? ` · ${x.hold_s} s held` : ""}${x.stats.best_deg != null ? ` · best ${N[x.stats.best_metric] || ""} ${x.stats.best_deg}°` : ""}${x.stats.ghost_best != null ? ` · ghost ${x.stats.ghost_best}%` : ""}${x.stats.stroke_match != null ? ` · stroke ${x.stats.stroke_match}%` : ""}</small></div></div>`).join("");
+      }
+      document.querySelectorAll(".seg-tabs button").forEach(b => b.onclick = () => {
+        document.querySelectorAll(".seg-tabs button").forEach(x => x.classList.toggle("on", x === b));
+        week(+b.dataset.o);
+      });
+    })().catch(e => toast(e.message, "error"));
+  </script>
+</body>
+</html>

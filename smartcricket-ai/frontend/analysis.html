@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Posture report</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <div class="page-head">
+        <div class="reveal">
+          <a href="history.html" class="small" style="font-weight:600">← History</a>
+          <h1 id="title" style="margin-top:6px">Posture report</h1>
+          <p class="muted" id="meta"><span class="skeleton" style="display:inline-block;width:260px;height:16px"></span></p>
+        </div>
+        <div class="reveal" style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="ghost" id="report"></button>
+          <button class="danger" id="delete"></button>
+        </div>
+      </div>
+      <div id="banner"></div>
+      <div id="qstrip"></div>
+
+      <div class="grid split">
+        <div class="card reveal" style="padding:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin:2px 4px 12px;flex-wrap:wrap">
+            <h2 style="margin:0">Body map</h2>
+            <div class="toggle" id="view">
+              <button data-v="live" class="on">Live skeleton</button>
+              <button data-v="annotated">Annotated</button>
+              <button data-v="original">Original</button>
+            </div>
+          </div>
+          <div class="viewer" id="viewer">
+            <div class="skeleton" style="aspect-ratio:4/3" id="vskel"></div>
+            <img id="photo" alt="Batting photo" hidden>
+            <svg class="overlay" id="overlay" aria-hidden="true"></svg>
+          </div>
+          <p class="faint small" style="margin:10px 4px 0">Glowing lines passed the visibility check. Dashed grey parts were not clearly visible and are never measured.</p>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div class="card reveal">
+            <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+              <div class="ring" id="ring"><div><b id="ring-n">0</b><span>of 33 visible</span></div></div>
+              <div style="flex:1;min-width:180px">
+                <h2 style="margin-bottom:6px">Detection quality</h2>
+                <p class="muted small" id="quality" style="margin:0 0 10px"></p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap" id="stats"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card reveal coach-card" style="flex:1">
+            <div id="coach-head"></div>
+            <div class="chat" id="chat"></div>
+            <div class="suggest" id="suggest"></div>
+            <form class="chat-form" id="chat-form">
+              <input class="plain" id="q" placeholder="Ask about this photo..." maxlength="500" autocomplete="off">
+              <button id="send" aria-label="Send"></button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="card reveal" style="margin-top:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+          <h2 style="margin:0">Joint angles</h2>
+          <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chip ok">clear</span><span class="chip low">less certain</span><span class="chip off">not measured</span></div>
+        </div>
+        <div class="gauges" id="gauges"></div>
+        <ul id="notes" class="small muted" style="margin:16px 0 0;padding-left:18px"></ul>
+        <p class="faint small" style="margin:10px 0 0">Angles are 2D estimates from one camera view. "Left" and "right" are the batter's own sides. They describe posture; they do not judge technique.</p>
+      </div>
+      <div class="card reveal" id="three-d" style="margin-top:18px" hidden></div>
+    </main>
+  </div>
+  <script src="js/api.js?v=48"></script>
+  <script src="js/coach.js?v=48"></script>
+  <script>
+    requireLogin();
+    sidebar("history.html");
+    const $ = id => document.getElementById(id);
+    const id = new URLSearchParams(location.search).get("id");
+    $("report").innerHTML = `${icon("download")} Download PDF`;
+    $("delete").innerHTML = `${icon("trash")} Delete`;
+    $("coach-head").innerHTML = coachHeader("About this photo");
+    revealAll();
+
+    const ORDER = ["left_elbow", "right_elbow", "left_shoulder", "right_shoulder", "left_hip", "right_hip", "left_knee", "right_knee"];
+    const TRIPLES = { left_elbow: [11, 13, 15], right_elbow: [12, 14, 16], left_knee: [23, 25, 27], right_knee: [24, 26, 28],
+                      left_hip: [11, 23, 25], right_hip: [12, 24, 26], left_shoulder: [13, 11, 23], right_shoulder: [14, 12, 24] };
+    const ARC_ON = ["left_elbow", "right_elbow", "left_knee", "right_knee"];
+    let A, urls = {};
+
+    (async () => {
+      A = await api(`/api/analyses/${id}`);
+      const s = A.summary || {};
+      $("qstrip").innerHTML = qualityHtml(s.quality);
+      if (s.world) {
+        $("three-d").hidden = false;
+        threeDCard($("three-d"), () => s.world, () => Object.fromEntries(Object.entries(A.angles || {}).map(([k, v]) => [k, v.deg])), () => s.angles_3d);
+      }
+      document.title = `SmartCricket AI: ${A.session_label || A.original_name}`;
+      const bolt = icon("bolt").replace("<svg", '<svg style="width:14px;height:14px;vertical-align:-2px"');
+      $("meta").innerHTML = [fmtDate(A.created_at), esc(A.original_name), A.session_label && esc(A.session_label),
+        `${bolt} ${A.latency_ms} ms`].filter(Boolean).join(" · ");
+
+      if (!s.detected) $("banner").innerHTML = alertHtml("warn", "No person was detected in this photo. Try one where the whole batter is clearly in view.");
+      else if (s.visible < 20) $("banner").innerHTML = alertHtml("warn", `Only ${s.visible} of ${s.total} body points were clearly visible, so some joints could not be measured.`);
+
+      [urls.original, urls.output] = await Promise.all([blobUrl(A.files.original), blobUrl(A.files.output)]);
+      if (!s.landmarks) { // analyses made before the live overlay existed
+        document.querySelector('[data-v="live"]').hidden = true;
+        setView("annotated");
+      } else setView("live");
+
+      ring(s.visible || 0, s.total || 33);
+      const measured = Object.values(A.angles || {}).filter(v => v.deg !== null).length;
+      $("quality").textContent = !s.detected ? "No body found." : s.visible >= 28 ? "Excellent view: nearly every body point is clear."
+        : s.visible >= 20 ? "Good view, with a few points partly hidden." : "Limited view: much of the body is hidden.";
+      $("stats").innerHTML = `<span class="chip info">${measured} of 8 angles measured</span>` +
+        (s.shoulder_line_deg != null ? `<span class="chip info">Shoulder tilt ${s.shoulder_line_deg}°</span>` : "") +
+        `<span class="chip off">${s.detect_ms ?? "–"} ms detection</span>`;
+      gauges();
+      $("notes").innerHTML = (s.notes || []).map(n => `<li>${esc(n)}</li>`).join("");
+      initCoach(id, A.messages, s.detected
+        ? `Hi! I've looked at your numbers: ${s.visible} of ${s.total} body points were clear and ${measured} joint angles were measured. Ask me anything about them.`
+        : "Hi! I couldn't find a person in this photo, so there's not much to talk about yet. Try a clearer side-on photo.",
+        ["What does my front knee angle show?", "Which joints could you not see?", "What should I practise next?"]);
+    })().catch(e => { $("banner").innerHTML = alertHtml("error", e.message); });
+
+    // ------------------------------------------------------------ viewer
+    document.querySelectorAll("#view button").forEach(b => b.onclick = () => setView(b.dataset.v));
+    function setView(v) {
+      document.querySelectorAll("#view button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+      const img = $("photo");
+      img.onload = () => { $("vskel")?.remove(); img.hidden = false; if (v === "live") drawSkeleton(); };
+      $("viewer").classList.toggle("dim", v === "live");
+      $("overlay").innerHTML = "";
+      const src = v === "annotated" ? urls.output : urls.original;
+      if (img.src === src && img.complete && img.naturalWidth) img.onload();
+      else img.src = src;
+    }
+
+    function drawSkeleton() {
+      const s = A.summary, [w, h] = s.image_size, H = 100 * h / w, L = s.landmarks, min = 0.5;
+      const P = i => [L[i][0] * 100, L[i][1] * H];
+      const svg = $("overlay");
+      svg.setAttribute("viewBox", `0 0 100 ${H}`);
+      let out = `<defs><linearGradient id="boneGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7fd1a0"/><stop offset="1" stop-color="#7fd1a0"/></linearGradient></defs>`;
+      s.edges.forEach(([a, b], i) => {
+        const ok = Math.min(L[a][2], L[b][2]) >= min;
+        const [x1, y1] = P(a), [x2, y2] = P(b);
+        const anim = ok && !reduceMotion ? `stroke-dasharray="1" stroke-dashoffset="1" style="animation:dash .55s ${0.15 + i * 0.07}s var(--ease) forwards"` : "";
+        out += `<path class="bone ${ok ? "ok" : "hid"}" pathLength="1" d="M${x1} ${y1}L${x2} ${y2}" ${anim}/>`;
+      });
+      ORDER.filter(k => ARC_ON.includes(k)).forEach((k, j) => {
+        const v = A.angles[k];
+        if (!v || v.deg === null) return;
+        const [ia, ib, ic] = TRIPLES[k], [ax, ay] = P(ia), [bx, by] = P(ib), [cx, cy] = P(ic);
+        const r = 4.2, n = (x, y) => { const d = Math.hypot(x, y) || 1; return [x / d, y / d]; };
+        const [ux, uy] = n(ax - bx, ay - by), [vx, vy] = n(cx - bx, cy - by);
+        const sweep = ux * vy - uy * vx > 0 ? 1 : 0;
+        const delay = reduceMotion ? 0 : 1.4 + j * 0.15;
+        const col = v.visibility < 0.65 ? "245,158,11" : "52,211,153";
+        out += `<path d="M${bx} ${by}L${bx + ux * r} ${by + uy * r}A${r} ${r} 0 0 ${sweep} ${bx + vx * r} ${by + vy * r}Z"
+                  fill="rgba(${col},.35)" stroke="rgba(${col},1)" stroke-width=".35" style="opacity:0;animation:fade .5s ${delay}s forwards"/>`;
+        const [lx, ly] = n(-(ux + vx) || 1, -(uy + vy));
+        out += `<text class="ang" x="${bx + lx * 6.5}" y="${by + ly * 6.5 + 1}" text-anchor="middle" style="animation-delay:${delay + .1}s">${Math.round(v.deg)}°</text>`;
+      });
+      L.forEach((p, i) => {
+        if (i > 0 && i < 11) return;
+        const ok = p[2] >= min, [x, y] = P(i), d = reduceMotion ? 0 : 0.2 + i * 0.03;
+        if (ok && [13, 14, 25, 26].includes(i)) out += `<circle class="halo" cx="${x}" cy="${y}" r="2.2" style="animation-delay:${d}s"/>`;
+        out += `<circle class="joint ${ok ? "ok" : "hid"}" cx="${x}" cy="${y}" r="${ok ? 0.95 : 0.7}" style="animation-delay:${d}s"/>`;
+      });
+      svg.innerHTML = out;
+    }
+
+    // ------------------------------------------------------------ ring + gauges
+    function ring(n, total) {
+      const r = $("ring"), pct = total ? (n / total) * 100 : 0;
+      r.style.setProperty("--c", n >= 28 ? "var(--pitch)" : n >= 20 ? "var(--gold)" : "var(--red)");
+      requestAnimationFrame(() => requestAnimationFrame(() => r.style.setProperty("--p", pct)));
+      countUp($("ring-n"), n, { duration: 1400 });
+    }
+
+    function gauges() {
+      const LEN = Math.PI * 50;
+      $("gauges").innerHTML = `<svg width="0" height="0" style="position:absolute"><defs>
+          <linearGradient id="gGreen"><stop offset="0" stop-color="#10b981"/><stop offset="1" stop-color="#1f9d55"/></linearGradient>
+          <linearGradient id="gGold"><stop offset="0" stop-color="#f59e0b"/><stop offset="1" stop-color="#ef4444"/></linearGradient></defs></svg>` +
+        ORDER.map(k => {
+          const v = (A.angles || {})[k] || { deg: null, visibility: 0 };
+          const ok = v.deg !== null, low = ok && v.visibility < 0.65;
+          const color = !ok ? "var(--ink-3)" : low ? "url(#gGold)" : "url(#gGreen)";
+          return `<div class="gauge ${ok ? "" : "off"}" title="Visibility ${v.visibility.toFixed(2)}">
+            <svg viewBox="0 0 120 70">
+              <path class="track" d="M10 62A50 50 0 0 1 110 62"/>
+              <path class="val" d="M10 62A50 50 0 0 1 110 62" stroke="${color}" stroke-dasharray="${LEN}" stroke-dashoffset="${LEN}" data-to="${ok ? LEN * (1 - v.deg / 180) : LEN}"/>
+              <text class="num" x="60" y="58" data-deg="${ok ? v.deg : ""}">${ok ? "0°" : "not seen"}</text>
+            </svg>
+            <div class="name">${prettyJoint(k)}</div>
+            <span class="chip ${!ok ? "off" : low ? "low" : "ok"}" style="margin-top:6px">${!ok ? "not measured" : low ? "less certain" : "clear"} · ${v.visibility.toFixed(2)}</span>
+          </div>`;
+        }).join("");
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        document.querySelectorAll(".gauge .val").forEach((p, i) => { p.style.transitionDelay = `${i * 90}ms`; p.style.strokeDashoffset = p.dataset.to; });
+        document.querySelectorAll(".gauge .num").forEach((t, i) => {
+          if (!t.dataset.deg) return;
+          setTimeout(() => countUp(t, +t.dataset.deg, { decimals: 1, suffix: "°", duration: 1300 }), i * 90);
+        });
+      }));
+    }
+
+    // ------------------------------------------------------------ actions
+    $("report").onclick = async () => {
+      const b = $("report"), label = b.innerHTML;
+      b.disabled = true; b.innerHTML = '<span class="spinner" style="border-color:rgba(11,26,18,.2);border-top-color:#c8102e"></span> Preparing PDF';
+      try { await openBlob(`/api/reports/${id}/pdf`, `SmartCricket_Posture_report_${id}.pdf`); toast("PDF downloaded", "ok"); }
+      catch (e) { toast(e.message, "error"); }
+      finally { b.disabled = false; b.innerHTML = label; }
+    };
+    $("delete").onclick = async () => {
+      if (!confirm("Delete this analysis and its photo? This cannot be undone.")) return;
+      $("delete").disabled = true;
+      try { await api(`/api/analyses/${id}`, { method: "DELETE" }); toast("Analysis deleted", "ok"); setTimeout(() => go("history.html"), 400); }
+      catch (e) { toast(e.message, "error"); $("delete").disabled = false; }
+    };
+  </script>
+</body>
+</html>

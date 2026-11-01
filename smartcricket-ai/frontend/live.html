@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Live drill</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <div class="page-head">
+        <div class="reveal">
+          <a href="training.html" class="small" style="font-weight:600">← Today's training</a>
+          <h1 style="margin-top:6px" id="title">Live mirror</h1>
+          <p class="muted" id="sub">Your camera and pose tracking run on this device. Nothing is uploaded.</p>
+        </div>
+        <span class="chip ok reveal" id="privacy"></span>
+      </div>
+
+      <div class="live-grid">
+        <!-- camera, controls and live angles -->
+        <div class="live-main">
+        <div class="card live-cam reveal">
+          <div class="cam-box" id="cam-box">
+            <video id="video" playsinline muted></video>
+            <canvas id="overlay"></canvas>
+            <div class="cam-msg" id="cam-msg"><span class="spinner"></span><b>Loading the pose model…</b><small>About 6 MB, only the first time.</small></div>
+            <span class="cam-fps" id="fps" hidden></span>
+            <div class="cam-hint" id="hint" hidden></div>
+            <div class="heard" id="heard" hidden></div>
+          </div>
+          <div class="cam-actions">
+            <span class="act-group"><button id="start"></button><button class="ghost" id="reset"></button></span>
+            <span class="act-group"><button class="ghost icon-only" id="voice" aria-label="Voice coach"></button><button class="ghost icon-only" id="mic" aria-label="Voice commands"></button></span>
+            <button class="ghost" id="moment" disabled></button>
+            <span class="faint small" id="cam-note">Stand 2 to 3 metres back, side-on, with your whole body in view.</span>
+          </div>
+          <div class="moment-msg" id="moment-msg" hidden></div>
+          <div class="session-sum" id="session" hidden></div>
+        </div>
+
+          <div class="card reveal live-angles-card">
+            <span class="eyebrow-s">Live angles</span>
+            <div class="live-angles" id="angles"></div>
+            <p class="faint small" style="margin:10px 0 0">2D estimates from one camera, smoothed. "Front" = the more bent side.</p>
+          </div>
+        </div>
+
+        <!-- drill panel -->
+        <div class="live-side">
+          <div class="card reveal live-goal">
+            <span class="eyebrow-s" id="goal-eyebrow">Drill</span>
+            <h2 id="goal-title" style="margin:0 0 6px">Free practice</h2>
+            <p class="muted small" id="goal-how" style="margin:0"></p>
+            <div class="goal-ring">
+              <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" class="gr-bg"/><circle cx="60" cy="60" r="52" class="gr-fg" id="ring"/></svg>
+              <div><b id="count">0</b><span id="count-of">reps</span></div>
+            </div>
+            <div class="goal-rule" id="rule"></div>
+            <button id="done" disabled style="width:100%;margin-top:12px"></button>
+          </div>
+          <div class="card reveal recog-card">
+            <div class="card-head" style="margin-bottom:8px"><div><span class="eyebrow-s">Shot recognition</span><h2>What shot did I play?</h2></div></div>
+            <p class="muted small" id="recog-note" style="margin:0 0 10px">Play one shadow shot after the countdown. 15 frames are sent to the shot model and deleted straight away; nothing is saved.</p>
+            <button id="recog" style="width:100%" disabled></button>
+            <div class="recog-result" id="recog-result" hidden></div>
+          </div>
+          <div class="card reveal ghost-card">
+            <div class="card-head" style="margin-bottom:10px"><div><span class="eyebrow-s">Shadow the pro</span><h2>Copy a model player</h2></div>
+              <span class="ghost-ic" id="ghost-ic"></span></div>
+            <select class="select" id="ref" style="width:100%"></select>
+            <div class="ghost-opts">
+              <label><input type="checkbox" id="ghost-on" checked> Show ghost</label>
+              <label><input type="checkbox" id="ghost-flip"> Left-handed</label>
+              <label>Speed <select id="ghost-speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option></select></label>
+            </div>
+            <div class="match" id="match" hidden>
+              <div class="match-num"><b id="match-pct">–</b><span>live match</span></div>
+              <div class="match-cue" id="match-cue">Copy the gold ghost.</div>
+            </div>
+            <button class="ghost" id="record" style="width:100%;margin-top:12px" disabled></button>
+            <div class="rec-result" id="rec-result" hidden></div>
+          </div>
+          <div class="card reveal phone-card" id="phone-card" hidden>
+            <div class="card-head" style="margin-bottom:8px"><div><span class="eyebrow-s">Use your phone</span><h2>Train with the phone camera</h2></div></div>
+            <div id="phone-body"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js?v=48"></script>
+  <script type="module">
+    import { FilesetResolver, PoseLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/vision_bundle.mjs";
+
+    requireLogin();
+    sidebar("training.html");
+    const $ = id => document.getElementById(id);
+    $("privacy").innerHTML = `${icon("shield")} Runs on your device`;
+    $("start").innerHTML = `${icon("play")} Start camera`;
+    $("reset").innerHTML = `${icon("compare")} Reset count`;
+    $("done").innerHTML = `${icon("check")} Mark drill done`;
+    revealAll();
+
+    // ------------------------------------------------------------ the drill and its live rule
+    // reps: one rep when the measurement enters the target zone, stays there holdMs, then leaves it again.
+    // hold: seconds are counted while the measurement stays in the target zone.
+    const RULES = {
+      knee_bend:       { type: "reps", metric: "knee",     inZone: v => v < 150, outZone: v => v > 162, holdMs: 700, rule: "Bend the front knee below 150°, hold, then rise" },
+      hip_hinge:       { type: "hold", metric: "hip",      inZone: v => v < 160, rule: "Keep your hips hinged below 160°" },
+      level_shoulders: { type: "hold", metric: "tilt",     inZone: v => v < 8,   rule: "Keep your shoulder line within 8° of level", seconds: r => r * 2 },
+      high_backlift:   { type: "reps", metric: "shoulder", inZone: v => v > 100, outZone: v => v < 60, holdMs: 1500, rule: "Lift your arms above 100° and hold, then lower" },
+      elbow_lead:      { type: "reps", metric: "shoulder", inZone: v => v > 90,  outZone: v => v < 50, holdMs: 400, rule: "Lead with the front elbow up past 90°, then reset" },
+      balance_hold:    { type: "hold", metric: "knee",     inZone: (v, still) => v < 165 && still, rule: "Hold a bent-knee finish, keeping still", seconds: r => r * 3 },
+    };
+    const params = new URLSearchParams(location.search);
+    const drillId = +params.get("drill") || null;
+    let drill = null, rule = null, target = 0;
+
+    (async () => {
+      if (!drillId) return paintGoal();
+      const T = await api("/api/train/today");
+      drill = T.plan.find(d => d.id === drillId) || null;
+      if (drill) {
+        rule = RULES[drill.code] || null;
+        target = !rule ? 0 : rule.type === "reps" ? drill.amount : (rule.seconds ? rule.seconds(drill.amount) : drill.amount);
+      }
+      paintGoal();
+    })().catch(e => toast(e.message, "error"));
+
+    function paintGoal() {
+      if (!drill) {
+        $("goal-title").textContent = "Free practice";
+        $("goal-how").textContent = "Move through your shots and watch your joint angles live.";
+        $("count-of").textContent = "reps"; $("rule").textContent = "Pick a drill on the Training page to count reps.";
+        $("done").hidden = true; return;
+      }
+      $("title").textContent = drill.title;
+      $("goal-eyebrow").textContent = `Today's drill · ${drill.dose}`;
+      $("goal-title").textContent = drill.title;
+      $("goal-how").textContent = drill.how;
+      if (rule) {
+        $("rule").innerHTML = `${icon("target")} ${esc(rule.rule)} · target <b>${target}${rule.type === "hold" ? " s" : " reps"}</b> (one set)`;
+        $("count-of").textContent = rule.type === "hold" ? `of ${target} s` : `of ${target} reps`;
+      } else {
+        $("rule").innerHTML = `${icon("info")} This drill is not counted automatically. Use the live angles, then mark it done.`;
+        $("count-of").textContent = "free";
+        $("done").disabled = false;
+      }
+      if (drill.done) { $("done").disabled = true; $("done").innerHTML = `${icon("check")} Already done today`; }
+    }
+
+    // ------------------------------------------------------------ voice coach: spoken cues, and voice commands
+    // Speech is made by the browser itself (Web Speech API); nothing is sent to SmartCricket's server.
+    const voice = { on: store.get("sc_voice") !== "off", last: {}, rec: null, listening: false };
+    function say(text, key = text, gapMs = 4000, urgent = false) {
+      if (!voice.on || !("speechSynthesis" in window)) return;
+      const now = performance.now();
+      if (voice.last[key] && now - voice.last[key] < gapMs) return;
+      voice.last[key] = now;
+      if (urgent) speechSynthesis.cancel(); else if (speechSynthesis.speaking) return;   // never pile up phrases
+      const u = new SpeechSynthesisUtterance(text);
+      const v = coachVoice();
+      if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "en-GB";
+      u.rate = 1.03; u.pitch = 1.0;
+      speechSynthesis.speak(u);
+    }
+    // A man's voice for the coach: known male voices first (Chrome, Mac, Windows), then any voice whose name
+    // says male. Voices load a moment after the page opens, so the choice is remembered once found.
+    const MALE = ["Google UK English Male", "Daniel", "Rishi", "Arthur", "Oliver", "Aaron", "Fred",
+                  "Microsoft Ravi", "Microsoft Guy", "Microsoft David", "Microsoft Ryan"];
+    let chosenVoice = null;
+    function coachVoice() {
+      if (chosenVoice || !("speechSynthesis" in window)) return chosenVoice;
+      const all = speechSynthesis.getVoices();
+      if (!all.length) return null;
+      const english = all.filter(v => /^en/i.test(v.lang));
+      chosenVoice = MALE.map(n => english.find(v => v.name.startsWith(n))).find(Boolean)
+        || english.find(v => /\bmale\b|\bman\b/i.test(v.name)) || null;
+      return chosenVoice;
+    }
+    if ("speechSynthesis" in window) speechSynthesis.onvoiceschanged = () => { chosenVoice = null; coachVoice(); };
+    const CUE = { knee: "Bend your front knee a little more", hip: "Push your hips back", tilt: "Keep your shoulders level",
+                  shoulder: "Lift your arms higher" };
+    function paintVoice() {
+      $("voice").innerHTML = icon(voice.on ? "volume" : "mute");
+      $("voice").dataset.tip = voice.on ? "Voice coach on" : "Voice coach off";
+      $("voice").classList.toggle("on", voice.on);
+      $("mic").innerHTML = icon("mic");
+      $("mic").classList.toggle("on", voice.listening);
+      $("mic").dataset.tip = voice.listening ? 'Listening: say "start", "stop", "reset" or "done"' : "Voice commands";
+    }
+    $("voice").onclick = () => { voice.on = !voice.on; store.set("sc_voice", voice.on ? "on" : "off"); if (!voice.on) speechSynthesis?.cancel(); paintVoice(); };
+    $("mic").onclick = () => (voice.listening ? stopListening() : listen());
+    // What the player says, matched loosely so accents and short phrases still work.
+    const COMMANDS = [
+      ["start", /\b(start|starts|started|star|stat|begin|go|open|camera on|turn on)\b/],
+      ["stop", /\b(stop|stopped|pause|close|camera off|turn off|end)\b/],
+      ["reset", /\b(reset|restart|again|zero)\b/],
+      ["done", /\b(done|finish|finished|complete|completed)\b/],
+    ];
+    function handleCommand(text) {
+      const said = text.toLowerCase().trim();
+      const cmd = (COMMANDS.find(([, re]) => re.test(said)) || [])[0];
+      heard(said, !!cmd);
+      if (cmd === "start") { if (running) say("The camera is already on", "cmd", 0, true); else { say("Starting the camera", "cmd", 0, true); start(); } }
+      else if (cmd === "stop") { if (running) { say("Camera off", "cmd", 0, true); stop(); } }
+      else if (cmd === "reset") { resetCount(); say("Count reset", "cmd", 0, true); }
+      else if (cmd === "done") { if (drill && !drill.done) markDone(); else say("Pick a drill on the training page first", "cmd", 0, true); }
+      return cmd || null;
+    }
+    window.handleCommand = handleCommand;   // also handy for testing
+    let heardTimer;
+    function heard(text, understood, interim = false, info = false) {
+      const el = $("heard");
+      el.hidden = false;
+      el.className = `heard ${interim ? "interim" : understood ? "ok" : "miss"}`;
+      el.innerHTML = info ? `${icon("info")} <span>${esc(text)}</span>`
+        : interim ? `${icon("mic")} <span>${esc(text)}…</span>`
+        : understood ? `${icon("check")} Heard "<b>${esc(text)}</b>"`
+        : `${icon("mic")} Heard "<b>${esc(text)}</b>". Say "start", "stop", "reset" or "done".`;
+      clearTimeout(heardTimer);
+      if (!interim) heardTimer = setTimeout(() => (el.hidden = true), text.length > 60 ? 9000 : 4000);
+    }
+    const VOICE_HELP = "Voice commands need Chrome or Edge. Brave and Safari block the speech service they use. The voice coach still speaks in every browser.";
+    async function listen() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const brave = navigator.brave && await navigator.brave.isBrave().catch(() => false);
+      if (!SR || brave) return heard(VOICE_HELP, false, false, true), toast(VOICE_HELP, "warn");
+      voice.rec = new SR();
+      voice.rec.continuous = true; voice.rec.lang = "en-IN"; voice.rec.interimResults = true; voice.rec.maxAlternatives = 3;
+      voice.rec.onresult = e => {
+        const r = e.results[e.results.length - 1];
+        if (!r.isFinal) return heard(r[0].transcript, false, true);
+        // try every alternative the recogniser offers before giving up
+        for (const alt of r) if (COMMANDS.some(([, re]) => re.test(alt.transcript.toLowerCase()))) return handleCommand(alt.transcript);
+        handleCommand(r[0].transcript);
+      };
+      voice.rec.onend = () => { if (voice.listening) setTimeout(() => { try { voice.rec.start(); } catch {} }, 250); };   // keep listening
+      voice.rec.onerror = e => {
+        if (e.error === "not-allowed" || e.error === "service-not-allowed") { voice.listening = false; paintVoice(); toast("Microphone access is blocked: click the mic icon in the address bar and choose Allow", "warn"); }
+        else if (e.error === "network") {   // no internet, or a browser that blocks the speech service: stop retrying
+          voice.listening = false; try { voice.rec.stop(); } catch {} paintVoice();
+          heard(VOICE_HELP, false, false, true);
+          toast("Voice commands could not reach the speech service. Check the internet, or use Chrome or Edge.", "warn");
+        }
+        else if (e.error === "audio-capture") { voice.listening = false; paintVoice(); toast("No microphone found", "warn"); }
+      };
+      try { voice.rec.start(); voice.listening = true; heard('Listening… say "start", "stop", "reset" or "done"', false, true); } catch {}
+      paintVoice();
+    }
+    function stopListening() { voice.listening = false; try { voice.rec?.stop(); } catch {} $("heard").hidden = true; paintVoice(); }
+    paintVoice();
+
+    // ------------------------------------------------------------ geometry (same rule as the server: 2D angle, visibility 0.5)
+    const VIS = 0.5;
+    const seen = p => p && (p.visibility ?? 1) >= VIS;
+    function angle(a, b, c, w, h) {
+      if (!seen(a) || !seen(b) || !seen(c)) return null;
+      const v1 = [(a.x - b.x) * w, (a.y - b.y) * h], v2 = [(c.x - b.x) * w, (c.y - b.y) * h];
+      const cos = (v1[0] * v2[0] + v1[1] * v2[1]) / (Math.hypot(...v1) * Math.hypot(...v2) + 1e-6);
+      return Math.acos(Math.max(-1, Math.min(1, cos))) * 180 / Math.PI;
+    }
+    const minOf = (...v) => { v = v.filter(x => x != null); return v.length ? Math.min(...v) : null; };
+    const maxOf = (...v) => { v = v.filter(x => x != null); return v.length ? Math.max(...v) : null; };
+    function measure(L, w, h) {
+      const knee = minOf(angle(L[23], L[25], L[27], w, h), angle(L[24], L[26], L[28], w, h));
+      const hip = minOf(angle(L[11], L[23], L[25], w, h), angle(L[12], L[24], L[26], w, h));
+      const elbow = minOf(angle(L[11], L[13], L[15], w, h), angle(L[12], L[14], L[16], w, h));
+      const shoulder = maxOf(angle(L[13], L[11], L[23], w, h), angle(L[14], L[12], L[24], w, h));
+      let tilt = null;
+      if (seen(L[11]) && seen(L[12])) {
+        const a = Math.abs(Math.atan2((L[12].y - L[11].y) * h, (L[12].x - L[11].x) * w) * 180 / Math.PI) % 180;
+        tilt = Math.min(a, 180 - a);
+      }
+      return { knee, hip, elbow, shoulder, tilt };
+    }
+    // exponential smoothing so the numbers do not flicker
+    const smooth = {};
+    const ema = (k, v, a = 0.35) => (v == null ? (smooth[k] = null) : (smooth[k] = smooth[k] == null ? v : smooth[k] + a * (v - smooth[k])));
+
+    // ------------------------------------------------------------ counting
+    let count = 0, inSince = null, counted = false, holdMs = 0, lastT = null, lastHip = null, finished = false, outSince = null;
+    function resetCount() { count = 0; inSince = null; counted = false; holdMs = 0; finished = false; paintCount(); }
+    $("reset").onclick = resetCount;
+    function step(m, t, still) {
+      if (!rule || finished) return;
+      const v = m[rule.metric];
+      if (v == null) { inSince = null; return; }
+      // a spoken correction when the player has been out of the target zone for a while
+      if (rule.inZone(v, still)) outSince = null; else if ((outSince ??= t) && t - outSince > 2600) say(CUE[rule.metric], "cue", 6500);
+      if (rule.type === "reps") {
+        if (rule.inZone(v)) {
+          inSince ??= t;
+          if (!counted && t - inSince >= rule.holdMs) { counted = true; count++; beep(880); paintCount(true); say(String(count), "count", 0, true); }
+        } else if (rule.outZone(v)) { inSince = null; counted = false; }
+      } else {
+        if (rule.inZone(v, still) && lastT != null) {
+          const before = count;
+          holdMs += t - lastT; count = Math.floor(holdMs / 1000); paintCount();
+          if (count !== before && count % 5 === 0 && count < target) say(`${count} seconds`, "count", 0, true);
+        }
+      }
+      if (count >= target && target > 0) { finished = true; beep(1320, .25); say("Target reached. Great work!", "done", 0, true); complete(); }
+    }
+    function paintCount(pop) {
+      $("count").textContent = count;
+      const C = 2 * Math.PI * 52, pct = target ? Math.min(1, count / target) : 0;
+      $("ring").style.strokeDasharray = C; $("ring").style.strokeDashoffset = C * (1 - pct);
+      if (pop && !reduceMotion) { $("count").classList.remove("pop"); void $("count").offsetWidth; $("count").classList.add("pop"); }
+    }
+    paintCount();
+
+    let actx;
+    function beep(freq, dur = .09) {
+      try {
+        actx ??= new AudioContext();
+        const o = actx.createOscillator(), g = actx.createGain();
+        o.frequency.value = freq; g.gain.setValueAtTime(.12, actx.currentTime); g.gain.exponentialRampToValueAtTime(.001, actx.currentTime + dur);
+        o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime + dur);
+      } catch {}
+    }
+
+    async function complete() {
+      $("done").disabled = false;
+      hint(`Target reached! ${drill ? "Saving your drill…" : ""}`, "ok");
+      if (drill && !drill.done) await markDone();
+    }
+    async function markDone() {
+      const b = $("done");
+      b.disabled = true;
+      try {
+        const r = await api(`/api/train/drills/${drill.id}`, { method: "POST", body: { done: true } });
+        drill.done = true;
+        b.innerHTML = `${icon("check")} Drill done · +15 XP`;
+        xpFloat(b, 15); refreshLevel(r.status);
+        if (r.level_up) celebrate(r.status.level, r.status.level_name);
+        toast("Drill marked done", "ok");
+      } catch (e) { toast(e.message, "error"); b.disabled = false; }
+    }
+    $("done").onclick = () => drill && !drill.done && markDone();
+
+    // ------------------------------------------------------------ angles panel
+    const ROWS = [["knee", "Front knee"], ["hip", "Front hip"], ["elbow", "Front elbow"], ["shoulder", "Arm raise"], ["tilt", "Shoulder tilt"]];
+    $("angles").innerHTML = ROWS.map(([k, l]) => `<div class="la" data-k="${k}"><span>${l}</span><div class="la-bar"><i></i></div><b>–</b></div>`).join("");
+    function paintAngles(m) {
+      for (const [k] of ROWS) {
+        const row = $("angles").querySelector(`[data-k="${k}"]`), v = m[k];
+        row.querySelector("b").textContent = v == null ? "–" : `${Math.round(v)}°`;
+        row.querySelector("i").style.width = v == null ? "0" : `${Math.min(100, (v / (k === "tilt" ? 45 : 180)) * 100)}%`;
+        row.classList.toggle("target", !!rule && rule.metric === k);
+        row.classList.toggle("hit", !!rule && rule.metric === k && v != null && rule.inZone(v, true));
+      }
+    }
+
+    // ------------------------------------------------------------ shadow the pro: a ghost of a reference clip on your body
+    const JOINTS = ["left_elbow", "right_elbow", "left_shoulder", "right_shoulder", "left_hip", "right_hip", "left_knee", "right_knee"];
+    const TRIPLE = { left_elbow: [11, 13, 15], right_elbow: [12, 14, 16], left_shoulder: [13, 11, 23], right_shoulder: [14, 12, 24],
+                     left_hip: [11, 23, 25], right_hip: [12, 24, 26], left_knee: [23, 25, 27], right_knee: [24, 26, 28] };
+    const SWAP = j => j.startsWith("left_") ? j.replace("left_", "right_") : j.replace("right_", "left_");
+    const ghost = { ref: null, start: 0, frameMs: 110, matchEma: null, lowSince: null };
+    $("ghost-ic").innerHTML = icon("ghost");
+    $("record").innerHTML = `${icon("video")} Record my stroke and compare`;
+
+    (async () => {
+      const refs = await api("/api/references");
+      $("ref").innerHTML = refs.length
+        ? `<option value="">Choose a model player…</option>` + refs.map(r => `<option value="${r.id}">${esc(r.label)}</option>`).join("")
+        : `<option value="">No reference clips yet</option>`;
+    })().catch(() => {});
+    $("ref").onchange = async () => {
+      ghost.ref = null; $("match").hidden = true; $("record").disabled = true; $("rec-result").hidden = true;
+      if (!$("ref").value) return;
+      try {
+        ghost.ref = await api(`/api/references/${$("ref").value}/pose`);
+        ghost.start = performance.now(); ghost.matchEma = null;
+        $("match").hidden = false; $("record").disabled = false;
+        say(`Shadow the pro: ${ghost.ref.shot}. Copy the gold ghost.`, "ghost", 0, true);
+      } catch (e) { toast(e.message, "error"); }
+    };
+
+    function sideAngles(L, w, h) {
+      const out = {};
+      for (const j of JOINTS) { const [a, b, c] = TRIPLE[j]; out[j] = angle(L[a], L[b], L[c], w, h); }
+      return out;
+    }
+    const torso = (P, f) => {   // hip centre and torso length of a skeleton, P(i) gives [x, y, visible]
+      const hips = [23, 24].map(P).filter(p => p[2]), sh = [11, 12].map(P).filter(p => p[2]);
+      if (!hips.length || !sh.length) return null;
+      const hc = [hips.reduce((s, p) => s + p[0], 0) / hips.length, hips.reduce((s, p) => s + p[1], 0) / hips.length];
+      const sc = [sh.reduce((s, p) => s + p[0], 0) / sh.length, sh.reduce((s, p) => s + p[1], 0) / sh.length];
+      return { hc, len: Math.hypot(sc[0] - hc[0], sc[1] - hc[1]) + 1e-6 };
+    };
+    // The ghost plays the reference stroke in a loop. It is scaled to your torso and placed on your hips.
+    function drawGhost(L, w, h, t) {
+      const R = ghost.ref; if (!R || !$("ghost-on").checked || !R.landmarks.length) return null;
+      const speed = +$("ghost-speed").value, n = R.landmarks.length;
+      const gi = Math.floor((t - ghost.start) * speed / ghost.frameMs) % n;
+      const [rw, rh] = R.frame_size || [16, 9], F = R.landmarks[gi], flip = $("ghost-flip").checked;
+      const you = torso(i => [L[i].x * w, L[i].y * h, seen(L[i])]);
+      const pro = torso(i => [F[i][0] * rw, F[i][1] * rh, F[i][2] >= VIS]);
+      if (!you || !pro) return { gi };
+      const s = you.len / pro.len;
+      const pt = i => [you.hc[0] + (flip ? -1 : 1) * (F[i][0] * rw - pro.hc[0]) * s, you.hc[1] + (F[i][1] * rh - pro.hc[1]) * s];
+      ctx.save(); ctx.globalAlpha = .62; ctx.lineCap = "round";
+      for (const [a, b] of EDGES) {
+        if (F[a][2] < VIS || F[b][2] < VIS) continue;
+        const A = pt(a), B = pt(b);
+        ctx.strokeStyle = "#f5c542"; ctx.lineWidth = 12;
+        ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.stroke();
+      }
+      ctx.restore();
+      return { gi };
+    }
+    // Live match: your joint angles against the ghost, at the ghost's frame or the two either side of it,
+    // so a slightly early or late movement still counts.
+    function liveMatch(L, w, h, gi) {
+      const R = ghost.ref; if (!R || gi == null) return;
+      const mine = sideAngles(L, w, h), flip = $("ghost-flip").checked, n = R.angles.length;
+      let best = null;
+      for (const k of [-2, -1, 0, 1, 2]) {
+        const ref = R.angles[(gi + k + n) % n], diffs = [];
+        for (const j of JOINTS) {
+          const r = ref[flip ? SWAP(j) : j];
+          if (mine[j] != null && r != null) diffs.push([j, mine[j] - r]);
+        }
+        if (diffs.length < 3) continue;
+        const mean = diffs.reduce((s, d) => s + Math.abs(d[1]), 0) / diffs.length;
+        if (!best || mean < best.mean) best = { mean, diffs };
+      }
+      if (!best) return;
+      const pct = Math.max(0, Math.min(100, 100 - best.mean * 1.4));
+      ghost.matchEma = ghost.matchEma == null ? pct : ghost.matchEma + .2 * (pct - ghost.matchEma);
+      const m = Math.round(ghost.matchEma);
+      $("match-pct").textContent = `${m}%`;
+      sess.ghostBest = Math.max(sess.ghostBest ?? 0, m); sess.ghostSum += m; sess.ghostN++;
+      $("match").className = `match ${m >= 80 ? "good" : m >= 60 ? "mid" : "low"}`;
+      const [j, d] = best.diffs.sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))[0];
+      const name = prettyJoint(j).toLowerCase();
+      const cue = Math.abs(d) < 8 ? "Great shape. Keep copying the ghost." : `${prettyJoint(j)}: ${d > 0 ? "bend it" : "straighten it"} about ${Math.round(Math.abs(d))}°`;
+      $("match-cue").textContent = cue;
+      if (m < 65) { ghost.lowSince ??= performance.now(); if (performance.now() - ghost.lowSince > 3000) say(`${d > 0 ? "Bend" : "Straighten"} your ${name}`, "ghostcue", 6000); }
+      else { ghost.lowSince = null; if (m >= 85) say("Great match", "ghostgood", 15000); }
+    }
+
+    // Record a stroke for 2.5 seconds after a countdown, then compare it with the reference using Dynamic Time
+    // Warping, the same method the server uses for uploaded clips.
+    let recording = null;
+    $("record").onclick = async () => {
+      if (!running) return toast("Start the camera first", "warn");
+      $("record").disabled = true; $("rec-result").hidden = true;
+      for (const n of [3, 2, 1]) { hint(`Get ready… ${n}`, "ok"); say(String(n), "cd", 0, true); await new Promise(r => setTimeout(r, 900)); }
+      hint("Play your stroke now!", "ok"); say("Go!", "cd", 0, true); beep(990, .15);
+      recording = [];
+      setTimeout(() => { const rec = recording; recording = null; hint(""); finishRecording(rec); }, 2500);
+    };
+    function dtwCompare(P, R) {
+      const n = P.length, m = R.length, D = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(Infinity));
+      const dist = (a, b) => { const d = JOINTS.filter(j => a[j] != null && b[j] != null).map(j => (a[j] - b[j]) ** 2); return d.length ? Math.sqrt(d.reduce((s, x) => s + x, 0) / d.length) : 0; };
+      D[0][0] = 0;
+      for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++) D[i][j] = dist(P[i - 1], R[j - 1]) + Math.min(D[i - 1][j], D[i][j - 1], D[i - 1][j - 1]);
+      const path = []; let i = n, j = m;
+      while (i > 0 && j > 0) {
+        path.unshift([i - 1, j - 1]);
+        const c = [D[i - 1][j - 1], D[i - 1][j], D[i][j - 1]], k = c.indexOf(Math.min(...c));
+        if (k === 0) { i--; j--; } else if (k === 1) i--; else j--;
+      }
+      const per = {};
+      for (const jn of JOINTS) {
+        const d = path.map(([a, b]) => [P[a][jn], R[b][jn]]).filter(([x, y]) => x != null && y != null).map(([x, y]) => x - y);
+        if (d.length) per[jn] = d.reduce((s, x) => s + x, 0) / d.length;
+      }
+      return { distance: D[n][m] / path.length, per };
+    }
+    function finishRecording(rec) {
+      $("record").disabled = false;
+      const good = rec.filter(f => Object.values(f).filter(v => v != null).length >= 4);
+      if (good.length < 10) { toast("I could not see your body clearly enough. Step back and try again.", "warn"); say("I could not see you clearly. Try again.", "rec", 0, true); return; }
+      const P = Array.from({ length: 15 }, (_, k) => good[Math.round(k * (good.length - 1) / 14)]);   // 15 frames, like the server
+      const flip = $("ghost-flip").checked;
+      const R = ghost.ref.angles.map(f => Object.fromEntries(JOINTS.map(j => [j, f[flip ? SWAP(j) : j]])));
+      const res = dtwCompare(P, R);
+      const pct = Math.round(Math.max(0, Math.min(100, 100 - res.distance * 1.4)));
+      sess.stroke = Math.max(sess.stroke ?? 0, pct);
+      const worst = Object.entries(res.per).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 3);
+      $("rec-result").hidden = false;
+      $("rec-result").innerHTML = `<div class="rr-head"><b>${pct}%</b><span>stroke match · DTW ${res.distance.toFixed(1)}°</span></div>
+        ${worst.map(([j, d]) => `<div class="rr-row"><span>${prettyJoint(j)}</span><b class="${Math.abs(d) < 8 ? "ok" : "off"}">${d > 0 ? "+" : ""}${d.toFixed(0)}°</b><small>${Math.abs(d) < 8 ? "close to the pro" : d > 0 ? "more open than the pro" : "more bent than the pro"}</small></div>`).join("")}`;
+      say(`Stroke match ${pct} percent.${worst[0] && Math.abs(worst[0][1]) >= 8 ? ` Work on your ${prettyJoint(worst[0][0]).toLowerCase()}.` : " Excellent."}`, "rec", 0, true);
+    }
+
+    // ------------------------------------------------------------ use the phone as the camera (same Wi-Fi, https)
+    // One button starts phone mode on this computer; the QR code then opens the Live page on the phone.
+    async function paintPhone(lan) {
+      $("phone-card").hidden = false;
+      if (lan?.available) {
+        $("phone-body").innerHTML = `<div class="phone-on"><span class="dot-live"></span>Phone mode is on</div>
+          <div class="phone-qr" id="qr"></div>
+          <ol class="phone-steps"><li>Connect the phone to the <b>same Wi-Fi</b> as this computer.</li>
+            <li>Scan the code with the phone camera, or open <a href="${esc(lan.url)}">${esc(lan.url)}</a></li>
+            <li>The phone warns about the certificate: tap <b>Advanced → Proceed</b>. It is your own computer.</li>
+            <li>Sign in, then press <b>Start camera</b>. Prop the phone up side-on, 2 to 3 metres away.</li></ol>
+          <button class="ghost" id="phone-off" style="width:100%;margin-top:12px">${icon("logout")} Turn off phone mode</button>`;
+        if (window.QRCode) new QRCode($("qr"), { text: lan.url, width: 168, height: 168, colorDark: "#062a1b", colorLight: "#ffffff" });
+        $("phone-off").onclick = async () => paintPhone(await api("/api/lan/stop", { method: "POST" }).catch(() => ({ available: false })));
+      } else {
+        $("phone-body").innerHTML = `<p class="muted small" style="margin:0 0 12px">Use your phone as the camera at the nets. Phones only allow the camera on a secure page, so this turns on a secure address on your Wi-Fi.</p>
+          <button id="phone-on" style="width:100%">${icon("video")} Turn on phone mode</button>
+          <p class="faint small" style="margin:10px 0 0">Only on a Wi-Fi you trust (home or your own hotspot).</p>`;
+        $("phone-on").onclick = async () => {
+          const b = $("phone-on"); b.disabled = true; b.innerHTML = '<span class="spinner"></span> Starting phone mode…';
+          try { paintPhone(await api("/api/lan/start", { method: "POST" })); toast("Phone mode is on: scan the QR code", "ok"); }
+          catch (e) { toast(e.message, "error"); b.disabled = false; b.innerHTML = `${icon("video")} Turn on phone mode`; }
+        };
+      }
+    }
+    if (location.protocol === "http:") api("/api/lan").then(paintPhone).catch(() => {});
+
+    // ------------------------------------------------------------ session summary and "save best moment"
+    // The session keeps numbers only. The best frame is kept in memory and uploaded only if the player asks.
+    const BIGGER_IS_BETTER = { shoulder: true };
+    const sess = { start: null, activeMs: 0, lastTick: null, best: null, ghostBest: null, ghostSum: 0, ghostN: 0, stroke: null };
+    const bestCanvas = document.createElement("canvas");
+    let bestFrame = false;
+    $("moment").innerHTML = `${icon("camera")} Save best moment`;
+    function trackSession(m, t) {
+      if (sess.lastTick != null && t - sess.lastTick < 500) sess.activeMs += t - sess.lastTick;   // body in view
+      sess.lastTick = t;
+      const key = rule ? rule.metric : "knee", v = m[key];
+      if (v == null) return;
+      const better = sess.best == null || (BIGGER_IS_BETTER[key] ? v > sess.best.value : v < sess.best.value);
+      if (better) {
+        sess.best = { metric: key, value: Math.round(v) };
+        bestCanvas.width = video.videoWidth; bestCanvas.height = video.videoHeight;
+        bestCanvas.getContext("2d").drawImage(video, 0, 0);   // memory only, never sent unless saved
+        bestFrame = true; $("moment").disabled = false;
+      }
+    }
+    const METRIC_NAME = { knee: "deepest front knee", hip: "deepest hip hinge", elbow: "most bent elbow", shoulder: "highest arm raise", tilt: "most level shoulders" };
+    function showSummary() {
+      if (sess.activeMs < 10000) return;   // too short to be worth saving
+      const secs = Math.round(sess.activeMs / 1000), mm = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
+      const tiles = [[mm, "in view"], [rule?.type === "hold" ? `${count} s` : `${count}`, rule?.type === "hold" ? "held" : "reps"]];
+      if (sess.best) tiles.push([`${sess.best.value}°`, METRIC_NAME[sess.best.metric]]);
+      if (sess.ghostBest != null) tiles.push([`${sess.ghostBest}%`, "best ghost match"]);
+      if (sess.stroke != null) tiles.push([`${sess.stroke}%`, "stroke match"]);
+      $("session").hidden = false;
+      $("session").innerHTML = `<div class="ss-head">${icon("trophy")}<div><b>Session summary</b><small>${esc(drill ? drill.title : "Free practice")}${finished ? " · target reached" : ""}</small></div></div>
+        <div class="ss-tiles">${tiles.map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("")}</div>
+        <div class="ss-actions"><button id="ss-save">${icon("check")} Save session · +5 XP</button><button class="ghost" id="ss-skip">Discard</button></div>`;
+      $("ss-save").onclick = saveSession;
+      $("ss-skip").onclick = () => { $("session").hidden = true; resetSession(); };
+    }
+    function resetSession() { Object.assign(sess, { start: null, activeMs: 0, lastTick: null, best: null, ghostBest: null, ghostSum: 0, ghostN: 0, stroke: null }); }
+    async function saveSession() {
+      const b = $("ss-save"); b.disabled = true;
+      try {
+        const r = await api("/api/train/live-sessions", { method: "POST", body: {
+          drill_id: drill?.id ?? null, title: drill ? drill.title : "Free practice", duration_s: Math.max(1, Math.round(sess.activeMs / 1000)),
+          reps: rule?.type === "reps" ? count : 0, hold_s: rule?.type === "hold" ? count : 0, completed: finished,
+          stats: { best_metric: sess.best?.metric ?? null, best_deg: sess.best?.value ?? null, ghost: ghost.ref?.label ?? null,
+                   ghost_best: sess.ghostBest, ghost_avg: sess.ghostN ? Math.round(sess.ghostSum / sess.ghostN) : null, stroke_match: sess.stroke } } });
+        b.innerHTML = `${icon("check")} Saved · +${r.xp} XP`; xpFloat(b, r.xp); refreshLevel(r.status);
+        if (r.level_up) celebrate(r.status.level, r.status.level_name);
+        toast("Session saved to your Progress page", "ok"); resetSession();
+      } catch (e) { toast(e.message, "error"); b.disabled = false; }
+    }
+    $("moment").onclick = async () => {
+      if (!bestFrame && !running) return;
+      const b = $("moment"); b.disabled = true;
+      const src = bestFrame ? bestCanvas : (() => { const c = document.createElement("canvas"); c.width = video.videoWidth; c.height = video.videoHeight; c.getContext("2d").drawImage(video, 0, 0); return c; })();
+      const blob = await new Promise(r => src.toBlob(r, "image/jpeg", .92));
+      const form = new FormData();
+      form.append("file", blob, "live-best-moment.jpg");
+      form.append("session_label", `Live · best moment${sess.best ? ` (${METRIC_NAME[sess.best.metric]} ${sess.best.value}°)` : ""}`);
+      try {
+        const a = await api("/api/image/analyse", { method: "POST", body: form });
+        toast("Best moment saved: open it from History", "ok");
+        say("Best moment saved", "moment", 0, true);
+        $("moment-msg").hidden = false;
+        $("moment-msg").innerHTML = `${icon("check")} Best moment saved. <a href="analysis.html?id=${a.id}">Open its report →</a>`;
+      } catch (e) { toast(e.message, "error"); }
+      b.disabled = !bestFrame && !running;
+    };
+
+    // ------------------------------------------------------------ live shot recognition (needs the trained models)
+    $("recog").innerHTML = `${icon("target")} Recognise my shot`;
+    let shotModels = false;
+    (async () => {
+      const st = await api("/api/video/status").catch(() => null);
+      shotModels = !!st?.shot_models;
+      if (!shotModels) {
+        $("recog").innerHTML = `${icon("clock")} Switches on after model training`;
+        $("recog-note").textContent = "Live shot recognition uses the trained shot models. It turns on by itself once they are installed.";
+      } else $("recog").disabled = false;
+    })();
+    $("recog").onclick = async () => {
+      if (!running) return toast("Start the camera first", "warn");
+      const b = $("recog"); b.disabled = true; $("recog-result").hidden = true;
+      for (const n of [3, 2, 1]) { hint(`Get ready… ${n}`, "ok"); say(String(n), "cd", 0, true); await new Promise(r => setTimeout(r, 900)); }
+      hint("Play your shot now!", "ok"); say("Go!", "cd", 0, true); beep(990, .15);
+      // 15 frames over two seconds, at most 480 px wide (enough for the 224-px model input)
+      const blobs = [], cw = Math.min(480, video.videoWidth), ch = Math.round(video.videoHeight * cw / video.videoWidth);
+      const c = document.createElement("canvas"); c.width = cw; c.height = ch;
+      for (let k = 0; k < 15; k++) {
+        c.getContext("2d").drawImage(video, 0, 0, cw, ch);
+        blobs.push(await new Promise(r => c.toBlob(r, "image/jpeg", .85)));
+        await new Promise(r => setTimeout(r, 2000 / 15));
+      }
+      hint("Recognising…", "ok");
+      const form = new FormData();
+      blobs.forEach((bl, k) => form.append("frames", bl, `f${k}.jpg`));
+      try {
+        const r = await api("/api/video/recognise", { method: "POST", body: form });
+        const pct = Math.round(r.confidence * 100);
+        $("recog-result").hidden = false;
+        $("recog-result").innerHTML = `<div class="rc-shot"><b>${esc(r.shot)}</b><span class="chip ${r.uncertain ? "low" : "ok"}">${pct}%${r.uncertain ? " · unsure" : ""}</span></div>
+          ${r.top3.map(t => `<div class="rc-row"><span>${esc(t.shot)}</span><div class="la-bar"><i style="width:${t.prob * 100}%"></i></div><b>${Math.round(t.prob * 100)}%</b></div>`).join("")}
+          <small class="faint">${esc(r.model)} · ${r.ms} ms · frames deleted</small>`;
+        say(r.uncertain ? `I'm not sure. Maybe a ${r.shot}.` : `That looked like a ${r.shot}. ${pct} percent.`, "recog", 0, true);
+        hint("");
+      } catch (e) { toast(e.message, "error"); hint(""); }
+      b.disabled = !shotModels;
+    };
+
+    // ------------------------------------------------------------ camera + pose loop
+    const video = $("video"), canvas = $("overlay"), ctx = canvas.getContext("2d");
+    const EDGES = [[11, 12], [11, 13], [13, 15], [12, 14], [14, 16], [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28], [27, 31], [28, 32]];
+    let landmarker = null, running = false, stream = null, frames = 0, fpsT = performance.now(), lastVideoT = -1;
+
+    async function loadModel() {
+      const files = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/wasm");
+      const opts = delegate => ({ baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task", delegate },
+                                  runningMode: "VIDEO", numPoses: 1 });
+      try { return await PoseLandmarker.createFromOptions(files, opts("GPU")); }
+      catch { return await PoseLandmarker.createFromOptions(files, opts("CPU")); }   // no WebGL: slower but works
+    }
+    const modelReady = loadModel().then(m => {
+      landmarker = m;
+      $("cam-msg").innerHTML = `${icon("video")}<b>Ready</b><small>Press "Start camera" and allow camera access.</small>`;
+    }).catch(e => {
+      $("cam-msg").innerHTML = `${icon("alert")}<b>Could not load the pose model</b><small>${esc(e.message || "Check your internet connection and refresh.")}</small>`;
+    });
+
+    function hint(text, kind = "warn") {
+      const h = $("hint");
+      if (!text) { h.hidden = true; return; }
+      h.hidden = false; h.className = `cam-hint ${kind}`; h.textContent = text;
+    }
+
+    let starting = false;
+    function camMsg(ic, title, text, spin = false) {
+      $("cam-msg").hidden = false;
+      $("cam-msg").innerHTML = `${spin ? '<span class="spinner"></span>' : icon(ic)}<b>${title}</b><small>${text}</small>`;
+    }
+    // Plain-language reasons for every way the browser can refuse the camera.
+    function cameraError(e) {
+      const n = e && e.name;
+      if (n === "NotAllowedError" || n === "SecurityError")
+        return camMsg("alert", "Camera access is blocked",
+          "Click the camera icon in the address bar and choose Allow, then press Start camera again. In Brave, also check the Shields (lion) icon.");
+      if (n === "NotFoundError" || n === "OverconstrainedError") return camMsg("alert", "No camera found", "Connect a webcam, or use a laptop with a built-in camera.");
+      if (n === "NotReadableError" || n === "AbortError")
+        return camMsg("alert", "The camera is busy", "Another app is using it (Zoom, Meet, FaceTime or another tab). Close it and try again.");
+      camMsg("alert", "Could not start the camera", esc((e && e.message) || "Please refresh the page and try again."));
+    }
+
+    async function start() {
+      if (running) return stop();
+      if (starting) return;
+      if (!navigator.mediaDevices?.getUserMedia)
+        return camMsg("alert", "Camera not available here", "Open the app at http://localhost:8000 in Chrome, Edge or Brave. Cameras only work on localhost or https.");
+      starting = true; $("start").disabled = true;
+      if (!landmarker) camMsg("", "Loading the pose model…", "One moment, then the camera starts.", true);
+      await modelReady;
+      if (!landmarker) { starting = false; $("start").disabled = false; return; }
+      camMsg("", "Starting the camera…", "If your browser asks, choose Allow. Look for the camera icon in the address bar.", true);
+      // a browser that is still waiting for a hidden permission prompt gives no answer: tell the player where to look
+      const slow = setTimeout(() => camMsg("", "Waiting for camera permission…",
+        "Click the camera icon in the address bar and choose Allow. In Brave, check the Shields (lion) icon too.", true), 6000);
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" }, audio: false });
+        video.srcObject = stream;
+        await new Promise((ok, fail) => { video.onloadedmetadata = ok; setTimeout(() => fail(new Error("The camera did not send a picture.")), 8000); });
+        await video.play();
+      } catch (e) {
+        clearTimeout(slow); stream?.getTracks().forEach(t => t.stop()); stream = null;
+        cameraError(e); starting = false; $("start").disabled = false;
+        return;
+      }
+      clearTimeout(slow);
+      canvas.width = video.videoWidth || 1280; canvas.height = video.videoHeight || 720;
+      $("cam-msg").hidden = true; $("fps").hidden = false; $("fps").textContent = "…";
+      $("session").hidden = true;
+      running = true; starting = false; $("start").disabled = false;
+      $("start").innerHTML = `${icon("pause")} Stop camera`;
+      say(rule ? `Let's go. ${rule.rule}.` : "Camera on. I'll watch your angles.", "start", 0, true);
+      requestAnimationFrame(loop);
+    }
+    function stop(message = true) {
+      running = false;
+      stream?.getTracks().forEach(t => t.stop()); stream = null;
+      video.srcObject = null;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);           // no frozen skeleton left behind
+      for (const k in smooth) smooth[k] = null;
+      lastHip = null; lastT = null; inSince = null; lastVideoT = -1;
+      $("fps").hidden = true;
+      $("start").innerHTML = `${icon("play")} Start camera`;
+      if (message) camMsg("video", "Camera stopped", 'Press "Start camera" to continue.');
+      if (message) showSummary();
+      paintAngles({});
+      hint("");
+    }
+    // leaving or hiding the page always switches the camera off
+    addEventListener("pagehide", () => running && stop(false));
+    document.addEventListener("visibilitychange", () => { if (document.hidden && running) stop(); });
+    $("start").onclick = start;
+
+    function loop() {
+      if (!running) return;
+      const now = performance.now();
+      if (video.currentTime !== lastVideoT) {
+        lastVideoT = video.currentTime;
+        const res = landmarker.detectForVideo(video, now);
+        draw(res.landmarks[0]);
+        frames++;
+        if (now - fpsT > 1000) { $("fps").textContent = `${Math.round(frames * 1000 / (now - fpsT))} fps`; frames = 0; fpsT = now; }
+      }
+      requestAnimationFrame(loop);
+    }
+
+    function draw(L) {
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+      const t = performance.now();
+      if (!L) { hint("I can't see you. Step into the frame."); paintAngles({}); lastT = t; return; }
+      const full = seen(L[0]) && (seen(L[27]) || seen(L[28])) && seen(L[11]) && seen(L[12]);
+      hint(full ? (finished ? "Target reached! Well done." : "") : "Step back: I need to see you from head to feet.", finished ? "ok" : "warn");
+      if (!full) say("Step back so I can see you from head to feet", "frame", 8000);
+      const g = drawGhost(L, w, h, t);   // gold ghost underneath your own skeleton
+      // skeleton
+      ctx.lineCap = "round";
+      for (const [a, b] of EDGES) {
+        if (!seen(L[a]) || !seen(L[b])) continue;
+        ctx.strokeStyle = "rgba(243,233,210,.9)"; ctx.lineWidth = 9;
+        ctx.beginPath(); ctx.moveTo(L[a].x * w, L[a].y * h); ctx.lineTo(L[b].x * w, L[b].y * h); ctx.stroke();
+        ctx.strokeStyle = "#1f9d55"; ctx.lineWidth = 5; ctx.stroke();
+      }
+      for (let i = 11; i < 33; i++) {
+        if (!seen(L[i])) continue;
+        ctx.fillStyle = "#c8102e"; ctx.beginPath(); ctx.arc(L[i].x * w, L[i].y * h, 7, 0, 2 * Math.PI); ctx.fill();
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke();
+      }
+      // measurements, smoothed
+      const raw = measure(L, w, h), m = {};
+      for (const k in raw) m[k] = ema(k, raw[k]);
+      // label the target joint on the body
+      if (rule && m[rule.metric] != null) {
+        const anchor = { knee: [25, 26], hip: [23, 24], elbow: [13, 14], shoulder: [11, 12], tilt: [11, 12] }[rule.metric].map(i => L[i]).find(seen);
+        if (anchor) {
+          const x = anchor.x * w, y = anchor.y * h, ok = rule.inZone(m[rule.metric], true);
+          ctx.save(); ctx.translate(x, y); ctx.scale(-1, 1);               // canvas is mirrored: un-mirror the text
+          ctx.font = "800 30px 'Plus Jakarta Sans', sans-serif";
+          const txt = `${Math.round(m[rule.metric])}°`, tw = ctx.measureText(txt).width;
+          ctx.fillStyle = ok ? "#1f9d55" : "#c8102e"; ctx.beginPath(); ctx.roundRect(14, -22, tw + 20, 40, 10); ctx.fill();
+          ctx.fillStyle = "#fff"; ctx.fillText(txt, 24, 9); ctx.restore();
+        }
+      }
+      // "still" = hips barely moved since the last frame (for balance holds)
+      const hipNow = seen(L[23]) ? [L[23].x, L[23].y] : null;
+      const still = hipNow && lastHip ? Math.hypot(hipNow[0] - lastHip[0], hipNow[1] - lastHip[1]) < 0.006 : false;
+      lastHip = hipNow;
+      paintAngles(m);
+      if (g && full) liveMatch(L, w, h, g.gi);
+      if (full) trackSession(m, t);
+      if (recording) recording.push(sideAngles(L, w, h));
+      if (full) step(m, t, still);
+      lastT = t;
+    }
+  </script>
+</body>
+</html>

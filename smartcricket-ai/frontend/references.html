@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Reference clips</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <div class="page-head">
+        <div class="reveal"><h1>Reference clips</h1>
+          <p class="muted">Clean examples of each shot. Players compare their joint movement against them on the video result page.</p></div>
+      </div>
+
+      <div class="grid split">
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">Library</span><h2 id="lib-title">Reference clips</h2></div></div>
+          <div class="cards" id="refs"></div>
+        </div>
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">Add</span><h2>New reference clip</h2></div></div>
+          <form id="ref-form">
+            <select class="select" id="shot" required style="width:100%"></select>
+            <input class="plain" id="label" placeholder="Label, e.g. Cover drive, side-on, coach demo" maxlength="80" style="margin-top:10px">
+            <label class="dropzone" for="ref-file" id="ref-drop" style="padding:26px 14px;margin-top:12px">
+              <input type="file" id="ref-file" accept="video/mp4,video/quicktime,video/x-msvideo,.mp4,.mov,.avi">
+              <b id="ref-name">Choose a clip</b>
+              <p class="muted small" style="margin:4px 0 0">MP4, MOV or AVI, one stroke, whole body in view</p>
+            </label>
+            <button id="ref-btn" style="width:100%;margin-top:12px"></button>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js?v=48"></script>
+  <script>
+    requireLogin();
+    sidebar("references.html");
+    const $ = id => document.getElementById(id);
+    $("ref-btn").innerHTML = `${icon("plus")} Add reference`;
+    revealAll();
+
+    (async () => {
+      const m = await api("/api/models");
+      $("shot").innerHTML = `<option value="">Select the shot...</option>` + m.classes.map(s => `<option>${esc(s)}</option>`).join("");
+    })().catch(e => toast(e.message, "error"));
+
+    async function load() {
+      const refs = await api("/api/references");
+      $("lib-title").textContent = `Reference clips (${refs.length})`;
+      $("refs").innerHTML = refs.length ? refs.map(r => `
+        <div class="card hcard" style="cursor:default"><div class="ph"><img data-src="${r.thumb}" alt=""><span class="chip info badge">${esc(r.shot)}</span></div>
+          <div class="body"><b>${esc(r.label)}</b><span class="faint small">${r.frames} frames</span>
+          <div style="margin-top:10px"><button class="danger" data-del="${r.id}" style="padding:7px 12px;font-size:.82rem">${icon("trash")} Remove</button></div></div></div>`).join("")
+        : `<p class="muted" style="grid-column:1/-1;margin:0">No reference clips yet. Add one clean example for each shot you want players to compare against.</p>`;
+      $("refs").querySelectorAll("img[data-src]").forEach(img => loadImage(img, img.dataset.src));
+      $("refs").querySelectorAll("[data-del]").forEach(b => (b.onclick = async () => {
+        if (!confirm("Remove this reference clip?")) return;
+        try { await api(`/api/admin/references/${b.dataset.del}`, { method: "DELETE" }); toast("Reference removed", "ok"); load(); }
+        catch (e) { toast(e.message, "error"); }
+      }));
+    }
+    load().catch(e => toast(e.message, "error"));
+
+    $("ref-file").onchange = () => { $("ref-name").textContent = $("ref-file").files[0]?.name || "Choose a clip"; };
+    $("ref-form").onsubmit = async e => {
+      e.preventDefault();
+      const f = $("ref-file").files[0];
+      if (!$("shot").value) return toast("Select the shot type", "warn");
+      if (!f) return toast("Choose a clip", "warn");
+      const form = new FormData();
+      form.append("file", f); form.append("shot", $("shot").value);
+      if ($("label").value.trim()) form.append("label", $("label").value.trim());
+      const b = $("ref-btn");
+      b.disabled = true; b.innerHTML = '<span class="spinner"></span> Processing clip';
+      try {
+        await api("/api/admin/references", { method: "POST", body: form });
+        toast("Reference clip added", "ok");
+        $("ref-form").reset(); $("ref-name").textContent = "Choose a clip";
+        load();
+      } catch (err) { toast(err.message, "error"); }
+      finally { b.disabled = false; b.innerHTML = `${icon("plus")} Add reference`; }
+    };
+  </script>
+</body>
+</html>

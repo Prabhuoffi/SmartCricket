@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Admin overview</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <div class="page-head">
+        <div class="reveal">
+          <p class="muted small" id="today" style="margin:0 0 4px"></p>
+          <h1>Admin overview</h1>
+          <p class="muted">How players are using SmartCricket AI, and what still needs setting up.</p>
+        </div>
+        <a class="btn reveal" href="players.html" id="cta"></a>
+      </div>
+
+      <div class="board reveal" id="board"></div>
+
+      <div class="setup-row reveal" id="setup"></div>
+
+      <div class="grid split" style="margin-top:18px">
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">Activity</span><h2>Analyses per day</h2></div><span class="chip info">last 14 days</span></div>
+          <div style="position:relative;height:240px"><canvas id="daily"></canvas></div>
+        </div>
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">Live</span><h2>Recent activity</h2></div></div>
+          <div class="feed" id="feed"></div>
+        </div>
+      </div>
+
+      <div class="card reveal" style="margin-top:18px">
+        <div class="card-head"><div><span class="eyebrow-s">Attention</span><h2>Players who may need a nudge</h2></div>
+          <a href="players.html" class="small" style="font-weight:700">All players →</a></div>
+        <div class="feed" id="nudge"></div>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js?v=48"></script>
+  <script>
+    requireLogin();
+    sidebar("admin.html");
+    const $ = id => document.getElementById(id);
+    $("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+    $("cta").innerHTML = `${icon("users")} View all players`;
+    revealAll();
+    const ago = iso => {
+      if (!iso) return "never";
+      const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
+      return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+    };
+
+    (async () => {
+      const d = await api("/api/admin/overview");
+      const T = d.totals, S = d.setup;
+      $("board").innerHTML = [["players", "Players"], ["active_week", "Active this week"], ["analyses", "Analyses"], ["photos", "Photos"], ["videos", "Videos"]]
+        .map(([k, l]) => `<div class="cell"><b data-n="${T[k]}">0</b><span>${l}</span></div>`).join("");
+      $("board").querySelectorAll("b").forEach(b => countUp(b, +b.dataset.n));
+
+      // setup checklist: what the admin still has to do
+      $("setup").innerHTML = [
+        ["target", "Shot models", `${S.models_installed} of 5 installed`, S.models_installed >= 3, "models.html"],
+        ["chart", "Model results", S.results_imported ? "Imported" : "Not imported yet", S.results_imported, "models.html"],
+        ["video", "Reference clips", `${S.reference_clips} added`, S.reference_clips > 0, "references.html"],
+        ["shield", "Admin accounts", `${S.admins} admin${S.admins === 1 ? "" : "s"}`, true, "users.html"],
+      ].map(([ic, t, v, ok, href]) => `<a class="setup-card${ok ? " ok" : ""}" href="${href}">
+          <span class="sc-ic">${icon(ok ? "check" : ic)}</span><div><b>${t}</b><small>${v}</small></div>
+          <span class="sc-go">${ok ? "Done" : "Set up →"}</span></a>`).join("");
+
+      new Chart($("daily"), {
+        type: "bar",
+        data: { labels: d.daily.map(x => fmtDay(x.date)), datasets: [{ data: d.daily.map(x => x.count), backgroundColor: d.daily.map((x, i) => i === d.daily.length - 1 ? "#c8102e" : "#0f5c3a"), borderRadius: 6, maxBarThickness: 26 }] },
+        options: { maintainAspectRatio: false, animation: { duration: reduceMotion ? 0 : 1100 }, plugins: { legend: { display: false } },
+          scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 7 } }, y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "rgba(11,26,18,.06)" } } } },
+      });
+
+      $("feed").innerHTML = d.recent.length ? d.recent.slice(0, 6).map(r => `<div class="it"><span class="dot">${icon(r.mode === "image" ? "camera" : "video")}</span>
+        <div style="min-width:0;flex:1"><b>${esc(r.player)}</b> analysed ${r.mode === "image" ? "a photo" : "a video"}
+        <small>${esc(r.label || "")} · ${ago(r.at)}</small></div>
+        ${r.mode === "image" ? `<span class="chip ${r.visible >= 25 ? "ok" : r.visible ? "low" : "off"}">${r.visible ?? 0}/33</span>` : `<span class="chip info">${esc(r.shot || "Movement")}</span>`}</div>`).join("")
+        : `<p class="muted">No player activity yet.</p>`;
+
+      // inactive for a week, or finishing under 40% of their drills
+      const week = 7 * 864e5;
+      const nudge = d.players.map(p => {
+        const idle = !p.last_active || Date.now() - Date.parse(p.last_active) >= week;
+        const low = p.plan_pct != null && p.plan_pct < 40;
+        return idle || low ? { p, why: idle ? `Inactive · last seen ${ago(p.last_active)}` : `Finished ${p.plan_pct}% of drills in the last 7 days` } : null;
+      }).filter(Boolean).slice(0, 6);
+      $("nudge").innerHTML = nudge.length ? nudge.map(({ p, why }) => `<div class="it"><span class="dot">${icon("alert")}</span>
+        <div style="min-width:0;flex:1"><b>${esc(p.name)}</b><small>${esc(p.email)} · ${why}</small></div>
+        <span class="chip info">L${p.level} ${esc(p.level_name)}</span></div>`).join("")
+        : `<p class="muted" style="margin:0">Everyone is active and keeping up with their plan.</p>`;
+    })().catch(e => toast(e.message, "error"));
+  </script>
+</body>
+</html>

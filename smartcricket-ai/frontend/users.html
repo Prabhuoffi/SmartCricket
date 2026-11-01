@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Users</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <div class="page-head">
+        <div class="reveal"><h1>Users</h1><p class="muted">Every account and its role. Players analyse and train; admins manage the app.</p></div>
+        <div class="reveal" style="position:relative">
+          <span id="sico" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--ink-3)"></span>
+          <input class="plain" id="search" placeholder="Search name or email" style="padding-left:38px;width:250px">
+        </div>
+      </div>
+
+      <div class="pl-chips reveal" id="chips"></div>
+
+      <div class="card reveal" style="overflow-x:auto">
+        <table class="data ptable"><thead><tr><th>User</th><th>Role</th><th>Joined</th><th>Analyses</th></tr></thead><tbody id="users"></tbody></table>
+        <div class="note" id="note"></div>
+      </div>
+    </main>
+  </div>
+  <script src="js/api.js?v=48"></script>
+  <script>
+    requireLogin();
+    sidebar("users.html");
+    const $ = id => document.getElementById(id);
+    $("sico").innerHTML = icon("search");
+    $("note").innerHTML = `${icon("shield")} Admin access is given to the email addresses listed in ADMIN_EMAILS in the server's .env file.`;
+    revealAll();
+    const COLORS = ["#0f5c3a", "#c8102e", "#1f9d55", "#8f0b20", "#0a3d27", "#b58a3a"];
+    let users = [];
+
+    function render() {
+      const q = $("search").value.trim().toLowerCase();
+      const list = users.filter(u => `${u.name} ${u.email}`.toLowerCase().includes(q));
+      $("users").innerHTML = list.length ? list.map(u => `<tr>
+        <td><div class="pname"><span class="pav" style="background:${COLORS[u.id % COLORS.length]}">${esc(u.name.trim()[0] || "?").toUpperCase()}</span>
+          <div><b>${esc(u.name)}</b><small>${esc(u.email)}</small></div></div></td>
+        <td><span class="chip ${u.role === "admin" ? "info" : "off"}">${u.role === "admin" ? "Admin" : "Player"}</span></td>
+        <td>${fmtDate(u.created_at)}</td>
+        <td>${u.role === "admin" ? '<span class="faint">–</span>' : u.analyses}</td></tr>`).join("")
+        : `<tr><td colspan="4" class="muted">No users match.</td></tr>`;
+    }
+
+    (async () => {
+      users = await api("/api/admin/users");
+      const admins = users.filter(u => u.role === "admin").length;
+      $("chips").innerHTML = [["users", users.length, "accounts"], ["body", users.length - admins, "players"], ["shield", admins, "admins"]]
+        .map(([ic, n, l]) => `<span class="pl-chip">${icon(ic)}<b>${n}</b> ${l}</span>`).join("");
+      render();
+    })().catch(e => toast(e.message, "error"));
+    $("search").oninput = render;
+  </script>
+</body>
+</html>
