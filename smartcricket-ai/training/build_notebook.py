@@ -15,7 +15,24 @@ def md(text):
     cells.append({"cell_type": "markdown", "metadata": {}, "source": text.strip("\n")})
 
 
+import sys
+LEAN = "--fast" in sys.argv   # accuracy-only notebook: skips charts, pose study, speed and robustness; trains E1 and E3
+FT = "--finetune" in sys.argv  # also fine-tune the backbone's last blocks on cricket frames (implies --fast)
+LEAN = LEAN or FT
+
+
+def ft(text):
+    if FT:
+        code(text)
+
+
+def extra(text):
+    if not LEAN:
+        code(text)
+
+
 def code(text):
+    text = text.replace("ACCURACY_ONLY = {lean}", f"ACCURACY_ONLY = {LEAN}").replace("FINETUNE = {ft}", f"FINETUNE = {FT}")
     cells.append({"cell_type": "code", "metadata": {}, "execution_count": None, "outputs": [],
                   "source": text.strip("\n")})
 
@@ -27,7 +44,7 @@ This notebook trains the five shot models described in the project report and ev
 
 | Experiment | Model | Input |
 |---|---|---|
-| **E1** | Video only | EfficientNetV2-S features of 15 frames, GRU-128 + attention |
+| **E1** | Video only | RegNetY-16GF (SWAG) features of 15 frames cropped around the batter, GRU-128 + attention |
 | **E2** | Pose only | MediaPipe joint angles and landmarks of 15 frames, GRU-64 + attention |
 | **E3** | Video + pose | Both streams, late fusion |
 | **E9a** | Pose only, 3D | 3D joint angles and world landmarks of 15 frames (view-independent), GRU-64 + attention |
@@ -42,6 +59,12 @@ and McNemar significance tests between models.
 **How long:** about 2 to 3 hours on a free T4, most of it reading videos once. Every expensive step saves its
 output to your Google Drive (`MyDrive/SmartCricket/`), so if Colab disconnects, just press **Run all** again and it
 continues where it stopped.
+
+**New shots (optional):** CricShot10k has 15 shots. To add Slog Sweep, Paddle Sweep, Switch Hit, Leg Glance or Leave
+(or more clips of an existing shot), put clips in `MyDrive/SmartCricket/extra_shots/<Shot name>/` (one shot per clip,
+2 to 4 seconds; clips cut from the same match can go in a sub-folder, e.g. `extra_shots/Switch Hit/match01/`). A shot
+is trained once it has at least 40 clips; the CricShot10k split and test set stay the same, and `top1_cricshot_test`
+reports accuracy on those original test clips only.
 
 **At the end** you get `smartcricket_models.zip` (trained weights) and `results/` (tables and charts for Chapter 8).
 """)
@@ -80,16 +103,29 @@ DATASET_DRIVE_FOLDER = 'https://drive.google.com/drive/folders/13dQHHW8v9gt_jIss
 DATASET_IN_MY_DRIVE = None    # e.g. '/content/drive/MyDrive/CricShot10k'
 
 RAW = Path('/content/raw'); VIDEOS = Path('/content/videos')
-FAST = True                   # True: 1 training run per model, up to 25 epochs (about 10-15 min of training).
+FAST = False                  # True: 1 training run per model, up to 25 epochs (about 10-15 min of training).
                               # False: 3 runs per model with mean ± spread, as reported in the paper (about 30-60 min).
                               # Everything is cached, so you can switch to False later and rerun in about half an hour.
+CROP = True                   # crop every clip around the batter (box from the pose landmarks) before the backbone
+FINETUNE = {ft}               # fine-tune the backbone's last two blocks on cricket frames (about +45 min)
+FT_EPOCHS, FT_FRAMES = 4, 5   # fine-tuning epochs; random frames per training clip in each epoch
+BACKBONE_USED = sc.BACKBONE + (sc.FT_SUFFIX if FINETUNE else '')
+VCACHE = 'video' if (sc.BACKBONE == sc.LEGACY_BACKBONE and not CROP) else \\
+         'video_' + sc.BACKBONE.split('/')[0] + ('_crop' if CROP else '') + ('_ft' if FINETUNE else '')   # features on Drive
+FCACHE = 'frames_' + ('crop' if CROP else 'full')   # cropped 224 px frames as JPEG (fine-tuning only)
+def video_done(name):   # the video-reading step of a shard is finished (features, or frames when fine-tuning)
+    return (OUT / 'cache' / f'{VCACHE}_{name}.npz').exists() or (FINETUNE and (OUT / 'cache' / f'{FCACHE}_{name}.npz').exists())
 SEEDS = [1] if FAST else [1, 2, 3]
 EPOCHS, PATIENCE = (25, 4) if FAST else (40, 6)
 SPLIT = (0.70, 0.15, 0.15)
+ACCURACY_ONLY = {lean}                # True: only E1 and E3 and the accuracy table (fastest)
 SHARD = 500                   # clips per cache file on Drive
 POSE_MODEL = 'full'           # MediaPipe model for video frames: 'lite', 'full' or 'heavy'
+EXTRA = OUT / 'extra_shots'   # your own clips: EXTRA/<Shot name>/<clip>.mp4 (or EXTRA/<Shot name>/<match>/<clip>.mp4)
+EXTRA.mkdir(exist_ok=True)    # for the new shots (sc.NEW_SHOTS) or more clips of the existing ones
+MIN_CLIPS = 40                # a shot is trained only with at least this many clips in total
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-print('Device:', DEVICE, '| classes:', len(sc.CLASSES))
+print('Device:', DEVICE, '| shots known:', len(sc.CLASSES), '| extra clips folder:', EXTRA)
 """)
 
 md("## 4. Download and unpack CricShot10k\nThe dataset is for non-commercial research use only; the copyright of the videos stays with their owners.")
@@ -113,7 +149,7 @@ def caches_complete():
     if not split_csv.exists():
         return False
     n = len(pd.read_csv(split_csv)); shards = (n + SHARD - 1) // SHARD
-    vid = all((OUT / 'cache' / f'video_{s:03d}.npz').exists() for s in range(shards))
+    vid = all(video_done(f'{s:03d}') for s in range(shards))
     pose = all((OUT / 'cache' / f'pose_{s:03d}.npz').exists() and 'world' in np.load(OUT / 'cache' / f'pose_{s:03d}.npz').files
                for s in range(shards))
     return vid and pose
@@ -128,8 +164,8 @@ def needed_folders():
     rels = pd.read_csv(split_csv)['rel'].tolist(); shards = (len(rels) + SHARD - 1) // SHARD
     need = set()
     for s_ in range(shards):
-        v = OUT / 'cache' / f'video_{s_:03d}.npz'; p_ = OUT / 'cache' / f'pose_{s_:03d}.npz'
-        done = v.exists() and p_.exists() and 'world' in np.load(p_).files
+        p_ = OUT / 'cache' / f'pose_{s_:03d}.npz'
+        done = video_done(f'{s_:03d}') and p_.exists() and 'world' in np.load(p_).files
         if not done:
             need |= {Path(r).parts[0] for r in rels[s_ * SHARD:(s_ + 1) * SHARD]}
     return need
@@ -178,7 +214,7 @@ code("""
 import re
 from sklearn.model_selection import train_test_split, StratifiedGroupKFold
 norm = lambda s: re.sub(r'[^a-z]', '', s.lower())
-CLASS_KEYS = {norm(c): i for i, c in enumerate(sc.CLASSES)}
+CLASS_KEYS = {norm(c): i for i, c in enumerate(sc.BASE_CLASSES)}   # CricShot10k folders; extra shots come from EXTRA
 
 def class_of(path):
     for part in reversed(path.parts):
@@ -217,15 +253,43 @@ else:
         df['split'] = 'train'; df.loc[va, 'split'] = 'val'; df.loc[te, 'split'] = 'test'
     df[['rel', 'label', 'group', 'split']].to_csv(split_file, index=False)
     df['path'] = df['rel'].map(lambda r: str(VIDEOS / r))
+df['src'] = 'base'
 
-counts = pd.crosstab(df['label'].map(lambda i: sc.CLASSES[i]), df['split'])[['train', 'val', 'test']]
+# Extra clips from EXTRA/<Shot name>/...: split 70/15/15 by a hash of their source (the sub-folder when there is
+# one, else the file), so a clip keeps its split when more clips are added later
+import hashlib
+SHOT_OF = {norm(c): i for i, c in enumerate(sc.CLASSES)}
+ext = []
+for p in sorted(EXTRA.rglob('*')):
+    parts = p.relative_to(EXTRA).parts
+    if p.suffix.lower() in VIDEO_EXT and len(parts) >= 2 and norm(parts[0]) in SHOT_OF:
+        grp = '/'.join(parts[:2]) if len(parts) > 2 else '/'.join(parts)
+        h = int(hashlib.md5(grp.encode()).hexdigest(), 16) % 100
+        ext.append({'rel': '/'.join(parts), 'label': SHOT_OF[norm(parts[0])], 'group': grp, 'path': str(p), 'src': 'extra',
+                    'split': 'train' if h < 70 else 'val' if h < 85 else 'test'})
+EXTRA_TAG = hashlib.md5('|'.join(e['rel'] for e in ext).encode()).hexdigest()[:8]   # new cache when the clips change
+if ext:
+    print(f'{len(ext)} extra clips:', pd.Series([sc.CLASSES[e["label"]] for e in ext]).value_counts().to_dict())
+    df = pd.concat([df, pd.DataFrame(ext)], ignore_index=True)
+else:
+    print('No extra clips in', EXTRA, '- training the', len(sc.BASE_CLASSES), 'CricShot10k shots only')
+
+counts = pd.crosstab(df['label'].map(lambda i: sc.CLASSES[i]), df['split']).reindex(columns=['train', 'val', 'test'], fill_value=0)
 counts.loc['Total'] = counts.sum()
 display(counts)
 counts.to_csv(OUT / 'results' / 'split_counts.csv')
 assert len(df) > 9000, 'Fewer clips than expected: check the download step'
+
+per_split = pd.crosstab(df['label'], df['split']).reindex(columns=['train', 'val', 'test'], fill_value=0)
+ACTIVE = [sc.CLASSES[i] for i in per_split.index if per_split.loc[i].sum() >= MIN_CLIPS and (per_split.loc[i] > 0).all()]
+ACTIVE = [c for c in sc.CLASSES if c in ACTIVE]   # keep the usual order
+skipped = [sc.CLASSES[i] for i in per_split.index if sc.CLASSES[i] not in ACTIVE]
+if skipped: print('Not trained (fewer than', MIN_CLIPS, 'clips, or none in a split):', skipped)
+NC = len(ACTIVE); REMAP = {sc.CLASSES.index(c): k for k, c in enumerate(ACTIVE)}
+print(NC, 'shots trained:', ACTIVE)
 """)
 
-code("""
+extra("""
 # Look at one clip: the 15 frames the models will see (only when the videos are on this machine)
 import matplotlib.pyplot as plt
 ex = df.sample(1, random_state=0).iloc[0]
@@ -239,48 +303,7 @@ else:
     print('Videos were not downloaded this time (everything is cached), so the sample picture is skipped.')
 """)
 
-md("## 6. Video features (GPU, once)\nEach of the 15 frames goes through EfficientNetV2-S (ImageNet weights, frozen). "
-   "Training clips are also processed mirrored, for flip augmentation. Saved in shards on Drive.")
-code("""
-from torch.utils.data import Dataset, DataLoader
-backbone, _ = sc.build_backbone()
-backbone = backbone.to(DEVICE).to(memory_format=torch.channels_last).eval()
-
-class Clips(Dataset):
-    def __init__(self, rows): self.rows = rows
-    def __len__(self): return len(self.rows)
-    def __getitem__(self, i):
-        r = self.rows[i]
-        try:
-            fr = sc.sample_frames(r['path']); ok = True
-        except Exception:
-            fr = [np.zeros((sc.SIZE, sc.SIZE, 3), np.uint8)] * sc.NUM_FRAMES; ok = False
-        return sc.to_tensor(fr), sc.to_tensor(fr, flip=True), ok
-
-rows = df.to_dict('records')
-n_shards = (len(rows) + SHARD - 1) // SHARD
-t0 = time.time()
-for s in range(n_shards):
-    f = OUT / 'cache' / f'video_{s:03d}.npz'
-    if f.exists(): continue
-    part = rows[s * SHARD:(s + 1) * SHARD]
-    feats, flips, oks = [], [], []
-    dl = DataLoader(Clips(part), batch_size=8, num_workers=2, multiprocessing_context='fork')
-    with torch.no_grad(), torch.autocast('cuda', dtype=torch.float16, enabled=DEVICE == 'cuda'):
-        for x, xf, ok in dl:
-            B = x.shape[0]
-            both = torch.cat([x, xf]).flatten(0, 1).to(DEVICE, non_blocking=True).to(memory_format=torch.channels_last)
-            out = backbone(both).float().view(2, B, sc.NUM_FRAMES, -1).cpu().numpy().astype(np.float16)
-            feats.append(out[0]); flips.append(out[1]); oks.append(ok.numpy())
-    np.savez(f, feat=np.concatenate(feats), flip=np.concatenate(flips), ok=np.concatenate(oks))
-    print(f'shard {s+1}/{n_shards} saved  ({(time.time()-t0)/60:.1f} min)')
-V = [np.load(OUT / 'cache' / f'video_{s:03d}.npz') for s in range(n_shards)]
-FEAT = np.concatenate([v['feat'] for v in V]); FEAT_FLIP = np.concatenate([v['flip'] for v in V])
-OK = np.concatenate([v['ok'] for v in V])
-print('video features', FEAT.shape, '| unreadable clips:', int((~OK).sum()))
-""")
-
-md("## 7. Pose landmarks (CPU, once)\nMediaPipe Pose on the full-resolution frames. Runs in parallel on the CPU cores. Saved in shards on Drive.")
+md("## 6. Pose landmarks (CPU, once)\nMediaPipe Pose on the full-resolution frames. Runs in parallel on the CPU cores. Saved in shards on Drive.")
 code("""
 import urllib.request, multiprocessing
 from concurrent.futures import ProcessPoolExecutor
@@ -319,12 +342,17 @@ def pose_worker(paths):
     det.close()
     return out, sizes, world, qual
 
+rows = df.to_dict('records')
+n_base = int((df['src'] == 'base').sum())
+SHARDS = [(f'{s:03d}', lo, min(lo + SHARD, n_base)) for s, lo in enumerate(range(0, n_base, SHARD))] + \
+         [(f'x{EXTRA_TAG}_{s:03d}', lo, min(lo + SHARD, len(rows))) for s, lo in enumerate(range(n_base, len(rows), SHARD))]
+n_shards = len(SHARDS)
 workers = os.cpu_count() or 2
 t0 = time.time()
-for s in range(n_shards):
-    f = OUT / 'cache' / f'pose_{s:03d}.npz'
+for s, (name, lo, hi) in enumerate(SHARDS):
+    f = OUT / 'cache' / f'pose_{name}.npz'
     if f.exists() and 'world' in np.load(f).files: continue   # older shards without 3D are redone
-    paths = [r['path'] for r in rows[s * SHARD:(s + 1) * SHARD]]
+    paths = [r['path'] for r in rows[lo:hi]]
     chunks = [paths[i::workers] for i in range(workers)]
     with ProcessPoolExecutor(workers, mp_context=multiprocessing.get_context('fork')) as ex:
         res = list(ex.map(pose_worker, chunks))
@@ -334,7 +362,7 @@ for s in range(n_shards):
         lm[i::workers], sz[i::workers], wd[i::workers], ql[i::workers] = res[i]
     np.savez_compressed(f, lm=lm, size=sz, world=wd, qual=ql)
     print(f'shard {s+1}/{n_shards} saved  ({(time.time()-t0)/60:.1f} min)')
-P = [np.load(OUT / 'cache' / f'pose_{s:03d}.npz') for s in range(n_shards)]
+P = [np.load(OUT / 'cache' / f'pose_{name}.npz') for name, _, _ in SHARDS]
 LM = np.concatenate([p['lm'] for p in P]); SIZES = np.concatenate([p['size'] for p in P])
 WORLD = np.concatenate([p['world'] for p in P]); QUAL = np.concatenate([p['qual'] for p in P])
 
@@ -361,8 +389,152 @@ VIEW_B = np.array([sc.view_bucket(sc.view_ratio(LM[i])) for i in range(len(LM))]
 print('camera views:', dict(zip(*np.unique(VIEW_B, return_counts=True))))
 """)
 
-md("### E6: pose reliability\nHow often each key joint is clearly visible across all sampled frames.")
+ft(r"""
+# 7a. Read every clip once, crop around the batter, resize to 224 px and keep the 15 frames as JPEG on Drive
+BOXES = [sc.batter_box(LM[i], SIZES[i, 0], SIZES[i, 1]) if CROP else None for i in range(len(LM))]
+print(f'batter found and cropped in {np.mean([b is not None for b in BOXES]):.1%} of clips (others use the full frame)')
+from torch.utils.data import Dataset, DataLoader
+
+class ClipJpegs(Dataset):
+    def __init__(self, rows, boxes): self.rows, self.boxes = rows, boxes
+    def __len__(self): return len(self.rows)
+    def __getitem__(self, i):
+        try:
+            fr = sc.crop_frames(sc.sample_frames(self.rows[i]['path']), self.boxes[i]); ok = True
+        except Exception:
+            fr = [np.zeros((sc.SIZE, sc.SIZE, 3), np.uint8)] * sc.NUM_FRAMES; ok = False
+        jp = [cv2.imencode('.jpg', cv2.cvtColor(cv2.resize(f, (sc.SIZE, sc.SIZE), interpolation=cv2.INTER_AREA),
+                                                cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, 92])[1].tobytes() for f in fr]
+        return jp, ok
+
+t0 = time.time()
+for s, (name, lo, hi) in enumerate(SHARDS):
+    f = OUT / 'cache' / f'{FCACHE}_{name}.npz'
+    if f.exists(): continue
+    blobs, oks = [], []
+    for jp, ok in DataLoader(ClipJpegs(rows[lo:hi], BOXES[lo:hi]), batch_size=None, num_workers=2, multiprocessing_context='fork'):
+        blobs += jp; oks.append(ok)
+    off = np.cumsum([0] + [len(b) for b in blobs]).astype(np.int64)
+    np.savez(f, jpg=np.frombuffer(b''.join(blobs), np.uint8), off=off, ok=np.array(oks))
+    print(f'frames shard {s+1}/{n_shards} saved  ({(time.time()-t0)/60:.1f} min)')
+
+FR = [np.load(OUT / 'cache' / f'{FCACHE}_{name}.npz') for name, _, _ in SHARDS]
+JPG, OFF = [f['jpg'] for f in FR], [f['off'] for f in FR]
+SH_OF = np.concatenate([np.full(hi - lo, k) for k, (_, lo, hi) in enumerate(SHARDS)])
+LOC_OF = np.concatenate([np.arange(hi - lo) for _, lo, hi in SHARDS])
+FOK = np.concatenate([f['ok'] for f in FR])
+def frame(i, t):   # frame t of clip i, RGB 224 x 224
+    k, j = SH_OF[i], LOC_OF[i]; a, b = OFF[k][j * sc.NUM_FRAMES + t], OFF[k][j * sc.NUM_FRAMES + t + 1]
+    return cv2.cvtColor(cv2.imdecode(JPG[k][a:b], cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
+print('frames ready for', len(FOK), 'clips')
+""")
+
+(md if FT else (lambda *_: None))("## 7b. Fine-tune the backbone\n"
+   "The last two blocks of RegNetY-16GF learn from single cricket frames (each labelled with its clip's shot), on "
+   "training clips only; validation clips pick the best epoch. The test clips are never used here.")
+ft(r"""
+FT_PATH = OUT / 'models' / sc.FT_FILE
+lab = df['label'].map(REMAP).fillna(-1).astype(int).values
+tr_c = np.where((df['split'] == 'train').values & (lab >= 0) & FOK)[0]
+va_c = np.where((df['split'] == 'val').values & (lab >= 0) & FOK)[0]
+if FT_PATH.exists():
+    print('Fine-tuned backbone already on Drive:', FT_PATH)
+else:
+    import torch.nn as nn
+    net, _ = sc.build_backbone(sc.BACKBONE)
+    params = sc.unfreeze_last_blocks(net, sc.BACKBONE)
+    net = net.to(DEVICE).to(memory_format=torch.channels_last).eval()   # BatchNorm statistics stay frozen
+    head = nn.Linear(sc.FEAT_DIM, NC).to(DEVICE)
+    cw = np.bincount(lab[tr_c], minlength=NC); cw = torch.tensor(len(tr_c) / (NC * cw), dtype=torch.float32, device=DEVICE)
+    loss_fn = nn.CrossEntropyLoss(weight=cw, label_smoothing=0.1)
+
+    class Frames(Dataset):
+        def __init__(self, items, train): self.items, self.train = items, train
+        def __len__(self): return len(self.items)
+        def __getitem__(self, k):
+            i, t = self.items[k]; f = frame(i, t)
+            if self.train:   # light augmentation: random crop 80-100 %, mirror, brightness
+                s_ = random.uniform(0.8, 1.0); c = int(sc.SIZE * s_); x0, y0 = random.randint(0, sc.SIZE - c), random.randint(0, sc.SIZE - c)
+                f = np.clip(f[y0:y0 + c, x0:x0 + c].astype(np.float32) * random.uniform(0.8, 1.2), 0, 255).astype(np.uint8)
+            return sc.to_tensor([f], flip=self.train and random.random() < 0.5)[0], lab[i]
+
+    BS = 32
+    steps = FT_EPOCHS * ((len(tr_c) * FT_FRAMES + BS - 1) // BS)
+    opt = torch.optim.AdamW([{'params': params, 'lr': 1e-4}, {'params': head.parameters(), 'lr': 1e-3}], weight_decay=1e-4)
+    sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s_: sc.cosine_warmup(s_, steps, steps // 20))
+    scaler = torch.cuda.amp.GradScaler(enabled=DEVICE == 'cuda')
+    val_items = [(i, t) for i in va_c for t in (3, 7, 11)]
+    best, best_state = -1, None
+    for ep in range(FT_EPOCHS):
+        t0 = time.time(); random.seed(ep)
+        items = [(i, t) for i in tr_c for t in random.sample(range(sc.NUM_FRAMES), FT_FRAMES)]
+        for x, y in DataLoader(Frames(items, True), batch_size=BS, shuffle=True, num_workers=2, multiprocessing_context='fork', drop_last=True):
+            with torch.autocast('cuda', dtype=torch.float16, enabled=DEVICE == 'cuda'):
+                loss = loss_fn(head(net(x.to(DEVICE).to(memory_format=torch.channels_last))), y.to(DEVICE))
+            opt.zero_grad(); scaler.scale(loss).backward(); scaler.step(opt); scaler.update(); sched.step()
+        logits = []
+        with torch.no_grad(), torch.autocast('cuda', dtype=torch.float16, enabled=DEVICE == 'cuda'):
+            for x, _ in DataLoader(Frames(val_items, False), batch_size=128, num_workers=2, multiprocessing_context='fork'):
+                logits.append(head(net(x.to(DEVICE).to(memory_format=torch.channels_last))).float().cpu())
+        clip_pred = torch.cat(logits).view(len(va_c), 3, NC).mean(1).argmax(1).numpy()
+        acc = float((clip_pred == lab[va_c]).mean())
+        print(f'fine-tune epoch {ep+1}/{FT_EPOCHS}: validation accuracy {acc:.3f}  ({(time.time()-t0)/60:.1f} min)')
+        if acc > best:
+            best, best_state = acc, {k: v.detach().cpu().half().clone() for k, v in net.state_dict().items()}
+    torch.save(best_state, FT_PATH)
+    print('saved', FT_PATH, '| best validation accuracy', round(best, 3))
+    del net, head, opt
+    torch.cuda.empty_cache()
+""")
+
+md("## 7. Video features (GPU, once)\nEach clip is cropped to one fixed square around the batter (from the pose "
+   "landmarks of step 6; the full frame when the batter was not found), then each of the 15 frames goes through the "
+   "frozen backbone (RegNetY-16GF, SWAG weights). Training clips are also processed mirrored, for flip augmentation. "
+   "Saved in shards on Drive.")
 code("""
+from torch.utils.data import Dataset, DataLoader
+backbone, _ = sc.build_backbone(BACKBONE_USED, ft_weights=OUT / 'models' / sc.FT_FILE if FINETUNE else None)
+backbone = backbone.to(DEVICE).to(memory_format=torch.channels_last).eval()
+if not FINETUNE:
+    BOXES = [sc.batter_box(LM[i], SIZES[i, 0], SIZES[i, 1]) if CROP else None for i in range(len(LM))]
+    print(f'batter found and cropped in {np.mean([b is not None for b in BOXES]):.1%} of clips (others use the full frame)')
+
+class Clips(Dataset):
+    def __init__(self, rows, boxes, start=0): self.rows, self.boxes, self.start = rows, boxes, start
+    def __len__(self): return len(self.rows)
+    def __getitem__(self, i):
+        if FINETUNE:   # the saved cropped frames (step 7a)
+            fr = [frame(self.start + i, t) for t in range(sc.NUM_FRAMES)]; ok = bool(FOK[self.start + i])
+            return sc.to_tensor(fr), sc.to_tensor(fr, flip=True), ok
+        r = self.rows[i]
+        try:
+            fr = sc.crop_frames(sc.sample_frames(r['path']), self.boxes[i]); ok = True
+        except Exception:
+            fr = [np.zeros((sc.SIZE, sc.SIZE, 3), np.uint8)] * sc.NUM_FRAMES; ok = False
+        return sc.to_tensor(fr), sc.to_tensor(fr, flip=True), ok
+
+t0 = time.time()
+for s, (name, lo, hi) in enumerate(SHARDS):
+    f = OUT / 'cache' / f'{VCACHE}_{name}.npz'
+    if f.exists(): continue
+    feats, flips, oks = [], [], []
+    dl = DataLoader(Clips(rows[lo:hi], BOXES[lo:hi], lo), batch_size=8, num_workers=2, multiprocessing_context='fork')
+    with torch.no_grad(), torch.autocast('cuda', dtype=torch.float16, enabled=DEVICE == 'cuda'):
+        for x, xf, ok in dl:
+            B = x.shape[0]
+            both = torch.cat([x, xf]).flatten(0, 1).to(DEVICE, non_blocking=True).to(memory_format=torch.channels_last)
+            out = backbone(both).float().view(2, B, sc.NUM_FRAMES, -1).cpu().numpy().astype(np.float16)
+            feats.append(out[0]); flips.append(out[1]); oks.append(ok.numpy())
+    np.savez(f, feat=np.concatenate(feats), flip=np.concatenate(flips), ok=np.concatenate(oks))
+    print(f'shard {s+1}/{n_shards} saved  ({(time.time()-t0)/60:.1f} min)')
+V = [np.load(OUT / 'cache' / f'{VCACHE}_{name}.npz') for name, _, _ in SHARDS]
+FEAT = np.concatenate([v['feat'] for v in V]); FEAT_FLIP = np.concatenate([v['flip'] for v in V])
+OK = np.concatenate([v['ok'] for v in V])
+print('video features', FEAT.shape, '| unreadable clips:', int((~OK).sum()))
+""")
+
+md("### E6: pose reliability\nHow often each key joint is clearly visible across all sampled frames.")
+extra("""
 joints = {'Nose': 0, 'Left shoulder': 11, 'Right shoulder': 12, 'Left elbow': 13, 'Right elbow': 14, 'Left wrist': 15,
           'Right wrist': 16, 'Left hip': 23, 'Right hip': 24, 'Left knee': 25, 'Right knee': 26, 'Left ankle': 27, 'Right ankle': 28}
 vis = LM[OK][:, :, :, 2] >= sc.MIN_VIS
@@ -380,17 +552,19 @@ md("## 8. Training\nSame settings for all five models: AdamW, class-weighted cro
    "Horizontal flip is applied to training clips only.")
 code("""
 from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score, confusion_matrix, top_k_accuracy_score
-idx = {k: np.where((df['split'] == k).values & OK)[0] for k in ['train', 'val', 'test']}
-y_all = df['label'].values
-counts_tr = np.bincount(y_all[idx['train']], minlength=len(sc.CLASSES))
-class_w = torch.tensor(len(idx['train']) / (len(sc.CLASSES) * counts_tr), dtype=torch.float32, device=DEVICE)
+keep = df['label'].isin(REMAP).values
+idx = {k: np.where((df['split'] == k).values & OK & keep)[0] for k in ['train', 'val', 'test']}
+y_all = df['label'].map(REMAP).fillna(-1).astype(int).values
+IS_BASE = (df['src'] == 'base').values
+counts_tr = np.bincount(y_all[idx['train']], minlength=NC)
+class_w = torch.tensor(len(idx['train']) / (NC * counts_tr), dtype=torch.float32, device=DEVICE)
 print({k: len(v) for k, v in idx.items()})
 
 FEAT_T, FEATF_T = torch.from_numpy(FEAT), torch.from_numpy(FEAT_FLIP)
 POSES = {'2d': (torch.from_numpy(POSE), torch.from_numpy(POSE_FLIP)),
          '3d': (torch.from_numpy(POSE3D), torch.from_numpy(POSE3D_FLIP))}
 Y_T = torch.from_numpy(y_all).long()
-KINDS = ['video', 'pose', 'fusion', 'pose3d', 'fusion3d']
+KINDS = ['video', 'fusion'] if ACCURACY_ONLY else ['video', 'pose', 'fusion', 'pose3d', 'fusion3d']
 NAMES = {'video': 'E1 Video only', 'pose': 'E2 Pose only (2D)', 'fusion': 'E3 Video + pose (2D)',
          'pose3d': 'E9a Pose only (3D)', 'fusion3d': 'E9b Video + pose (3D)'}
 space = lambda kind: '3d' if sc.uses_3d(kind) else '2d'
@@ -416,7 +590,7 @@ def predict(model, ids, sp='2d'):
 def train(kind, seed, epochs=40, patience=6, lr=1e-3, bs=64):
     sp = space(kind)
     torch.manual_seed(seed); np.random.seed(seed); random.seed(seed)
-    model = sc.build_model(kind).to(DEVICE)
+    model = sc.build_model(kind, n_classes=NC).to(DEVICE)
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
     steps = epochs * ((len(idx['train']) + bs - 1) // bs); step = 0
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: sc.cosine_warmup(s, steps, steps // 20))
@@ -451,8 +625,25 @@ for kind in KINDS:
         print(f'{kind:6s} seed {seed}: best val macro-F1 {vf1:.4f}  ({len(hist)} epochs, {time.time()-t0:.0f} s)')
 """)
 
+md("### Select the model using validation only\n"
+   "Choose the model kind by its mean validation macro-F1 across seeds, then its best validation seed. "
+   "Freeze this choice before evaluating any test clips.")
+code("""
+# Select the model before test evaluation; test scores never choose the winner.
+validation_f1 = {kind: float(np.mean([runs[(kind, seed)]['val_f1'] for seed in SEEDS])) for kind in KINDS}
+best_kind = max(KINDS, key=lambda kind: validation_f1[kind])
+best_seed_of = {kind: max(SEEDS, key=lambda seed: runs[(kind, seed)]['val_f1']) for kind in KINDS}
+best_seed = best_seed_of[best_kind]
+print('Selected on validation:', best_kind, '| seed', best_seed, '| mean macro-F1', validation_f1[best_kind])
+""")
+
 md("## 9. Evaluation on the test split (E1 to E3, E5)\nTemperature scaling is fitted on the validation split only, then applied to the test split.")
 code("""
+FAM = np.array([sc.family_of(c) for c in ACTIVE])
+def fam_acc(y, probs):   # 10 shot families (sc.FAMILIES): family probabilities are the sums of their shots'
+    fams = sorted(set(FAM)); fp = np.stack([probs[:, FAM == f].sum(1) for f in fams], 1)
+    return float((np.array(fams)[fp.argmax(1)] == FAM[y]).mean())
+
 rows_out = []
 for (kind, seed), r in runs.items():
     m = r['model']
@@ -461,14 +652,15 @@ for (kind, seed), r in runs.items():
     yt = y_all[idx['test']]
     p_raw = torch.softmax(tl, 1).numpy(); p_cal = torch.softmax(tl / T, 1).numpy(); pred = p_cal.argmax(1)
     r.update(T=T, test_probs=p_cal)
-    rows_out.append({'model': kind, 'seed': seed, 'top1': accuracy_score(yt, pred), 'top3': top_k_accuracy_score(yt, p_cal, k=3, labels=range(15)),
+    base_t = IS_BASE[idx['test']]   # the original CricShot10k test clips, comparable with earlier runs
+    rows_out.append({'model': kind, 'seed': seed, 'top1': accuracy_score(yt, pred), 'top3': top_k_accuracy_score(yt, p_cal, k=3, labels=range(NC)),
                      'macro_f1': f1_score(yt, pred, average='macro'), 'precision': precision_score(yt, pred, average='macro', zero_division=0),
-                     'recall': recall_score(yt, pred, average='macro'), 'temperature': T,
+                     'recall': recall_score(yt, pred, average='macro'), 'family_top1': fam_acc(yt, p_cal), 'top1_cricshot_test': accuracy_score(yt[base_t], pred[base_t]), 'temperature': T,
                      'ece_before': sc.expected_calibration_error(p_raw, yt), 'ece_after': sc.expected_calibration_error(p_cal, yt)})
 res = pd.DataFrame(rows_out)
 res.to_csv(OUT / 'results' / 'test_results_all_seeds.csv', index=False)
 summary = res.groupby('model').agg(['mean', 'std']).drop(columns='seed').reindex(KINDS)
-pct = ['top1', 'top3', 'macro_f1', 'precision', 'recall']
+pct = ['top1', 'top3', 'macro_f1', 'precision', 'recall', 'family_top1', 'top1_cricshot_test']
 fmt = (lambda k, c: f"{summary.loc[k, (c, 'mean')]*100:.2f}") if len(SEEDS) == 1 else \
       (lambda k, c: f"{summary.loc[k, (c, 'mean')]*100:.2f} ± {summary.loc[k, (c, 'std')]*100:.2f}")
 table = pd.DataFrame({c: [fmt(k, c) for k in summary.index] for c in pct}, index=summary.index)
@@ -482,32 +674,30 @@ table.to_csv(OUT / 'results' / 'Table_8_2_classification.csv')
 
 md("## 10. Per-class results and confusion matrix (E4)")
 code("""
-best_kind = summary[('macro_f1', 'mean')].idxmax()
-best_seed = max(SEEDS, key=lambda s: runs[(best_kind, s)]['val_f1'])   # chosen on validation, not test
 best = runs[(best_kind, best_seed)]
 yt = y_all[idx['test']]; pred = best['test_probs'].argmax(1)
-per = pd.DataFrame({'shot': sc.CLASSES,
-                    'precision': precision_score(yt, pred, average=None, labels=range(15), zero_division=0).round(4),
-                    'recall': recall_score(yt, pred, average=None, labels=range(15)).round(4),
-                    'f1': f1_score(yt, pred, average=None, labels=range(15)).round(4),
-                    'test clips': np.bincount(yt, minlength=15)})
+per = pd.DataFrame({'shot': ACTIVE,
+                    'precision': precision_score(yt, pred, average=None, labels=range(NC), zero_division=0).round(4),
+                    'recall': recall_score(yt, pred, average=None, labels=range(NC)).round(4),
+                    'f1': f1_score(yt, pred, average=None, labels=range(NC)).round(4),
+                    'test clips': np.bincount(yt, minlength=NC)})
 display(per); per.to_csv(OUT / 'results' / 'Table_8_3_per_class.csv', index=False)
 
-cm = confusion_matrix(yt, pred, labels=range(15)); cmn = cm / cm.sum(1, keepdims=True)
+cm = confusion_matrix(yt, pred, labels=range(NC)); cmn = cm / cm.sum(1, keepdims=True)
 fig, ax = plt.subplots(figsize=(10, 8.5))
 im = ax.imshow(cmn, cmap='Blues', vmin=0, vmax=1)
-ax.set_xticks(range(15), sc.CLASSES, rotation=60, ha='right', fontsize=9); ax.set_yticks(range(15), sc.CLASSES, fontsize=9)
-for i in range(15):
-    for j in range(15):
+ax.set_xticks(range(NC), ACTIVE, rotation=60, ha='right', fontsize=9); ax.set_yticks(range(NC), ACTIVE, fontsize=9)
+for i in range(NC):
+    for j in range(NC):
         if cm[i, j]: ax.text(j, i, cm[i, j], ha='center', va='center', fontsize=7, color='white' if cmn[i, j] > .5 else 'black')
 ax.set_xlabel('Predicted shot'); ax.set_ylabel('True shot')
 ax.set_title(f'Confusion matrix, {best_kind} model (seed {best_seed}), test split'); fig.colorbar(im, fraction=.04)
 plt.tight_layout(); plt.savefig(OUT / 'results' / 'Fig_confusion_matrix.png', dpi=150); plt.show()
 off = cm.copy(); np.fill_diagonal(off, 0); i, j = np.unravel_index(off.argmax(), off.shape)
-print(f'Most confused: {sc.CLASSES[i]} -> {sc.CLASSES[j]} ({off[i, j]} clips, {off[i, j]/cm[i].sum():.1%} of {sc.CLASSES[i]})')
+print(f'Most confused: {ACTIVE[i]} -> {ACTIVE[j]} ({off[i, j]} clips, {off[i, j]/cm[i].sum():.1%} of {ACTIVE[i]})')
 """)
 
-code("""
+extra("""
 # E5 reliability diagram for the best model, before and after temperature scaling
 m = best['model']; tl = predict(m, idx['test'], space(best_kind))
 fig, axs = plt.subplots(1, 2, figsize=(10, 4.4))
@@ -521,8 +711,8 @@ for ax, (name, pr) in zip(axs, [('Before scaling', torch.softmax(tl, 1).numpy())
 plt.tight_layout(); plt.savefig(OUT / 'results' / 'Fig_reliability.png', dpi=150); plt.show()
 """)
 
-md("## 11. Speed of the full pipeline (for Table 8.6)\nTime per clip from video file to prediction: reading frames, EfficientNet features, pose and the classifier.")
-code("""
+md("## 11. Speed of the full pipeline (for Table 8.6)\nTime per clip from video file to prediction: reading frames, pose, batter crop and backbone features, and the classifier.")
+extra("""
 import mediapipe as mp
 from mediapipe.tasks import python as mpt
 from mediapipe.tasks.python import vision
@@ -533,17 +723,17 @@ def timed(device):
     t = {'read_frames': [], 'cnn_features': [], 'pose': [], 'classifier': []}
     for i, pth in enumerate(clips[:20 if device == 'cuda' else 6]):
         a = time.perf_counter(); fr = sc.sample_frames(pth); b = time.perf_counter()
-        with torch.no_grad():
-            f = bb(sc.to_tensor(fr).to(device)).unsqueeze(0)
-            if device == 'cuda': torch.cuda.synchronize()
-        c = time.perf_counter()
         h, w = fr[0].shape[:2]
         lm = np.stack([sc.landmarks_to_array((r.pose_landmarks or [None])[0], w, h) for r in (det.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(x))) for x in fr)])
         p = torch.from_numpy(sc.fill_missing(np.stack([sc.pose_features(x) for x in lm]))).unsqueeze(0).to(device)
+        c = time.perf_counter()
+        with torch.no_grad():
+            f = bb(sc.to_tensor(sc.crop_frames(fr, sc.batter_box(lm, w, h) if CROP else None)).to(device)).unsqueeze(0)
+            if device == 'cuda': torch.cuda.synchronize()
         d = time.perf_counter()
         with torch.no_grad(): heads['fusion'](f, p)
         e = time.perf_counter()
-        if i: [t[k].append(v * 1000) for k, v in zip(t, [b - a, c - b, d - c, e - d])]
+        if i: [t[k].append(v * 1000) for k, v in zip(t, [b - a, d - c, c - b, e - d])]
     return {k: round(float(np.mean(v)), 1) for k, v in t.items()}
 if len(clips) >= 8 and not FAST:
     speed = pd.DataFrame({'GPU (ms)': timed('cuda'), 'CPU (ms)': timed('cpu')})
@@ -559,11 +749,10 @@ md("## 12. Robustness and significance (E10)\n"
    "Accuracy by camera view (side-on, angled, front-on) and by image sharpness, for every model, plus how far "
    "2D angles drift from 3D angles in each view. McNemar tests check whether the differences between models "
    "on the same test clips are statistically significant.")
-code("""
+extra("""
 from scipy.stats import binomtest
 test = idx['test']; yt = y_all[test]
 views = VIEW_B[test]; sharp_b = np.where(QUAL[test, 0] < 90, 'soft (sharpness < 90)', 'sharp')
-best_seed_of = {k: max(SEEDS, key=lambda s: runs[(k, s)]['val_f1']) for k in KINDS}
 pred_of = {k: runs[(k, best_seed_of[k])]['test_probs'].argmax(1) for k in KINDS}
 rows_r = []
 for kind in KINDS:
@@ -611,13 +800,16 @@ md("## 13. Export the trained models for the web app")
 code("""
 export = OUT / 'models'
 for kind in KINDS:
-    s = max(SEEDS, key=lambda s: runs[(kind, s)]['val_f1'])
+    s = best_seed_of[kind]
     r = runs[(kind, s)]
     torch.save({'kind': kind, 'state_dict': {k: v.cpu() for k, v in r['model'].state_dict().items()}, 'temperature': r['T'],
-                'classes': sc.CLASSES, 'num_frames': sc.NUM_FRAMES, 'size': sc.SIZE, 'pose_model': POSE_MODEL,
-                'backbone': 'efficientnet_v2_s/IMAGENET1K_V1', 'seed': s, 'val_macro_f1': r['val_f1']}, export / f'{kind}.pt')
+                'classes': ACTIVE, 'num_frames': sc.NUM_FRAMES, 'size': sc.SIZE, 'pose_model': POSE_MODEL,
+                'backbone': BACKBONE_USED, 'crop': 'pose' if CROP else None, 'seed': s, 'val_macro_f1': r['val_f1']}, export / f'{kind}.pt')
 shutil.copy('sc_common.py', export / 'sc_common.py')
-json.dump({'best_model': best_kind, 'results': rows_out, 'robustness': rows_r, 'significance': sig_rows},
+json.dump({'best_model': best_kind, 'model_selection': {'criterion': 'mean_validation_macro_f1',
+           'validation_macro_f1': validation_f1, 'selected_seed': best_seed},
+           'results': rows_out, 'robustness': globals().get('rows_r', []),
+           'significance': globals().get('sig_rows', [])},
           open(OUT / 'results' / 'summary.json', 'w'), indent=1, default=float)
 shutil.make_archive('/content/smartcricket_models', 'zip', export)
 shutil.make_archive('/content/smartcricket_results', 'zip', OUT / 'results')
@@ -638,6 +830,6 @@ nb = {"cells": cells, "metadata": {"accelerator": "GPU", "colab": {"gpuType": "T
                                    "kernelspec": {"display_name": "Python 3", "name": "python3"},
                                    "language_info": {"name": "python"}},
       "nbformat": 4, "nbformat_minor": 0}
-out = HERE / "SmartCricket_Train.ipynb"
+out = HERE / ("SmartCricket_Train_FineTune.ipynb" if FT else "SmartCricket_Train_Fast.ipynb" if LEAN else "SmartCricket_Train.ipynb")
 out.write_text(json.dumps(nb, indent=1))
 print("wrote", out, len(cells), "cells")

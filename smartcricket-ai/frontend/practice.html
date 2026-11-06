@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Goals &amp; comparison</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+  <link rel="stylesheet" href="css/practice.css?v=1">
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <div class="page-head">
+        <div class="reveal">
+          <h1>Goals &amp; comparison</h1>
+          <p class="muted">Set a personal focus, practise, then compare a new capture with your own baseline.</p>
+        </div>
+        <div class="practice-actions reveal">
+          <a class="btn ghost" href="image.html">New photo</a>
+          <a class="btn ghost" href="video.html">New clip</a>
+        </div>
+      </div>
+
+      <section class="practice-intro reveal" aria-label="How personal comparison works">
+        <div><span>01</span><b>Choose a baseline</b><small>A saved photo or clip</small></div>
+        <div><span>02</span><b>Set your focus</b><small>One joint and a practice goal</small></div>
+        <div><span>03</span><b>Practise and retest</b><small>Repeat the same capture setup</small></div>
+        <div><span>04</span><b>Review the change</b><small>Measurements, without a skill score</small></div>
+      </section>
+
+      <div id="practice-loading" class="card" role="status" aria-live="polite">Loading your captures and practice goals…</div>
+      <div id="practice-workspace" hidden>
+        <div id="practice-message" role="status" aria-live="polite"></div>
+        <section class="practice-goal-context" id="goal-context" hidden aria-label="Selected practice goal"></section>
+
+        <section class="card practice-section reveal" aria-labelledby="saved-goals-heading">
+          <div class="card-head">
+            <div><span class="eyebrow-s">Your personal focus</span><h2 id="saved-goals-heading">Saved practice goals <span class="chip info" id="goal-count"></span></h2></div>
+            <label class="practice-filter">Show <select class="practice-select" id="goal-filter" aria-label="Filter practice goals" data-dropdown-compact><option value="active">Active goals</option><option value="all">All goals</option><option value="completed">Completed</option><option value="archived">Archived</option></select></label>
+          </div>
+          <div id="goal-list" class="practice-goal-list"></div>
+        </section>
+
+        <section class="card practice-section reveal" aria-labelledby="compare-heading">
+          <div class="card-head"><div><span class="eyebrow-s">Before and after</span><h2 id="compare-heading">Compare your captures</h2></div></div>
+          <p class="muted small">Use the same shot, body side, camera view, and phase of the movement. Photos compare with photos; clips compare selected frames with selected frames.</p>
+          <div class="practice-selectors">
+            <label>Baseline capture<select class="practice-select" id="baseline-select" aria-label="Baseline capture"><option value="">Choose a baseline</option></select></label>
+            <label>Retest capture<select class="practice-select" id="retest-select" aria-label="Retest capture" disabled><option value="">Choose a baseline first</option></select></label>
+          </div>
+          <p class="muted small" id="retest-help">Choose a baseline to find newer captures of the same type.</p>
+          <div class="practice-captures" id="capture-previews" hidden>
+            <article class="practice-capture" id="baseline-panel" aria-labelledby="baseline-heading">
+              <div class="practice-capture-head"><span class="chip info">Before</span><h3 id="baseline-heading">Your baseline</h3></div>
+              <div class="practice-preview"><img id="baseline-preview" alt="Baseline skeleton overlay" hidden><p id="baseline-preview-note">Select a saved capture to begin.</p></div>
+              <div class="practice-capture-meta" id="baseline-meta"></div>
+              <label class="practice-frame" id="baseline-frame-wrap" hidden>Baseline frame <input class="plain" type="number" id="baseline-frame" min="1" step="1"><small id="baseline-frame-help"></small></label>
+            </article>
+            <article class="practice-capture" id="retest-panel" aria-labelledby="retest-heading">
+              <div class="practice-capture-head"><span class="chip off">After</span><h3 id="retest-heading">Your retest</h3></div>
+              <div class="practice-preview"><img id="retest-preview" alt="Retest skeleton overlay" hidden><p id="retest-preview-note">Your newer capture will appear here.</p></div>
+              <div class="practice-capture-meta" id="retest-meta"></div>
+              <label class="practice-frame" id="retest-frame-wrap" hidden>Retest frame <input class="plain" type="number" id="retest-frame" min="1" step="1"><small id="retest-frame-help"></small></label>
+            </article>
+          </div>
+          <label class="practice-confirm" id="setup-confirmation" hidden><input type="checkbox" id="same-setup" disabled><span>I used the same shot, body side, camera view, and movement phase in both captures.<small>This is your confirmation. Image checks cannot verify the full setup.</small></span></label>
+          <div class="practice-actions"><button type="button" id="compare-button" disabled>Compare measurements</button><span class="muted small" id="comparison-hint">Select two captures to compare.</span></div>
+          <div id="comparison-error" role="status" aria-live="polite"></div>
+        </section>
+
+        <section class="card practice-section reveal" id="comparison-result" hidden aria-labelledby="result-heading" aria-live="polite">
+          <div class="card-head"><div><span class="eyebrow-s">Measured differences</span><h2 id="result-heading">Your comparison</h2></div><span id="comparison-status" class="chip"></span></div>
+          <p class="muted" id="comparison-note"></p>
+          <div class="practice-checks" id="comparison-checks"></div>
+          <div class="table-scroll" role="region" aria-label="Joint-angle comparison; scroll horizontally for more columns" tabindex="0">
+            <table class="data practice-table" id="comparison-table"><thead><tr><th scope="col">Joint</th><th scope="col">Baseline</th><th scope="col">Retest</th><th scope="col">Change</th></tr></thead><tbody></tbody></table>
+          </div>
+          <p class="faint small">Change = retest minus baseline. A positive value is a more open angle; a negative value is a more bent angle. A change alone does not establish better technique.</p>
+          <details id="omitted-joints" hidden><summary>Joints left out of this comparison</summary><ul id="omitted-list"></ul></details>
+          <div class="practice-actions practice-result-actions"><button type="button" class="ghost" id="download-comparison">Download comparison PDF</button><button type="button" id="save-goal-comparison" hidden>Save retest to this goal</button></div>
+          <div id="comparison-save-status" role="status" aria-live="polite"></div>
+        </section>
+
+        <section class="card practice-section reveal" aria-labelledby="create-goal-heading">
+          <div class="card-head"><div><span class="eyebrow-s">One focused change at a time</span><h2 id="create-goal-heading">Create a practice goal</h2></div></div>
+          <p class="muted small" id="goal-baseline-note" hidden></p>
+          <div class="practice-form-empty" id="goal-form-empty">
+            <div><b id="goal-form-empty-title">Choose a baseline to get started</b><p class="muted small" id="goal-form-empty-text">Your goal will use a joint measured in that photo or clip.</p></div>
+            <button type="button" class="ghost" id="choose-goal-baseline">Choose baseline</button>
+          </div>
+          <form id="goal-form" hidden>
+            <div class="practice-form-grid">
+              <label class="practice-wide">Goal title<input class="plain" id="goal-title" maxlength="120" required placeholder="e.g. Repeat a balanced drive finish"></label>
+              <label><span class="practice-field-label">Focus joint</span><select class="practice-select" id="goal-joint" aria-label="Goal focus joint" required disabled><option value="">Choose a measurable joint</option></select></label>
+              <label><span class="practice-field-label">Angle target <small>(optional)</small></span><input class="plain" id="goal-target" type="number" min="0" max="180" step="0.1" placeholder="Degrees, 0–180"><small>A target you choose, not a recommended ideal angle.</small></label>
+              <label><span class="practice-field-label">Review date <small>(optional)</small></span><input class="plain" id="goal-due" type="date"></label>
+              <label class="practice-wide">Practice notes (optional)<textarea class="plain" id="goal-notes" maxlength="1000" rows="3" placeholder="What will you practise? How will you keep the next capture consistent?"></textarea></label>
+            </div>
+            <div class="practice-actions"><button id="create-goal" disabled>Create goal from baseline</button><a class="small" href="training.html">Open today's training plan →</a></div>
+          </form>
+          <div id="goal-form-status" role="status" aria-live="polite"></div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script src="js/dropdown.js?v=1"></script>
+  <script src="js/api.js?v=48"></script>
+  <script src="js/practice.js?v=1"></script>
+</body>
+</html>

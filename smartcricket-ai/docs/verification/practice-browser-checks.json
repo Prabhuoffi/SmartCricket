@@ -1,0 +1,79 @@
+{
+  "success": true,
+  "actions": [
+    "Practice empty state loads and disables comparison without captures",
+    "Real baseline photo report opens practice; goal saved with measured joint and optional chosen target",
+    "Training carries selected goal and matching retest link",
+    "Goal retest upload returns to baseline/retest selection without silently attaching evidence",
+    "Exploratory warning, confirmed comparison and explicit saved retest all behave correctly",
+    "Comparison PDF downloaded through actual UI with authenticated goal context",
+    "Saved pair survives reload; manual completion, reopen and archive lifecycle works",
+    "Real clip comparison uses selected first/last frame measurements and correct signed deltas",
+    "Foreign ownership returns404; invalid same/reversed/mixed/invalid-frame pairs return400",
+    "Deleting baseline clears evidence/frame/confirmation while preserving archived goal and notes",
+    "Deleting retest also detaches saved evidence safely"
+  ],
+  "videoFrameIndices": [
+    0,
+    14
+  ],
+  "unexpectedRuntimeErrors": [],
+  "consoleErrors": [],
+  "overflows": [],
+  "viewports": [
+    {
+      "name": "practice-empty-desktop",
+      "clientWidth": 1440,
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "goal-training-desktop",
+      "clientWidth": 1440,
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "practice-photo-comparison-desktop",
+      "clientWidth": 1440,
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "practice-video-comparison-desktop",
+      "clientWidth": 1440,
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "practice-video-mobile",
+      "clientWidth": 390,
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "practice-photo-mobile",
+      "clientWidth": 390,
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "goal-upload-mobile",
+      "clientWidth": 390,
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "goal-training-mobile",
+      "clientWidth": 390,
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "practice-deleted-evidence-mobile",
+      "clientWidth": 390,
+      "width": 390,
+      "overflow": false
+    }
+  ]
+}

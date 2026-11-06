@@ -5,16 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SmartCricket AI: Model results</title>
   <link rel="stylesheet" href="css/style.css?v=48">
+  <link rel="stylesheet" href="css/models.css?v=1">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="layout">
-    <main>
+    <main class="models-page">
       <div class="page-head">
         <div class="reveal"><h1>Model results</h1>
-          <p class="muted">How the five shot classifiers (2D and 3D pose, video, and their fusions) performed on the CricShot10k test split: experiments E1 to E3, E5, E9 and E10.</p></div>
+          <p class="muted">Compare the accuracy and calibration of your shot-classification models.</p></div>
       </div>
-      <div class="grid kpis" id="installed"></div>
+      <div class="card models-load" id="models-status" role="status" aria-live="polite">Loading model results…</div>
+      <p class="models-summary muted small" id="models-summary" hidden></p>
+      <div class="grid kpis models-installed" id="installed"></div>
       <div id="empty" hidden class="grid split">
         <div class="card reveal">
           <div class="card-head"><div><span class="eyebrow-s">Setup</span><h2>Three steps to fill this page</h2></div><span class="chip low" id="step-count"></span></div>
@@ -25,122 +28,48 @@
           <ul class="will">
             <li><b>Accuracy and macro-F1</b> for each model on test clips it never saw</li>
             <li><b>Calibration (ECE)</b> before and after temperature scaling</li>
-            <li><b>Best model</b>, which becomes the default for video analysis</li>
+            <li><b>Highest macro-F1</b> across the imported model evaluations</li>
           </ul>
           <span class="eyebrow-s" style="margin-top:18px" id="cls-title">The shots it learns</span>
           <div class="classes" id="classes"></div>
         </div>
       </div>
       <div id="content" hidden>
-        <div class="grid two">
+        <div class="models-chart-note" id="charts-unavailable" role="status" hidden>Charts are unavailable. All imported metrics are shown in the table below.</div>
+        <div class="grid two" id="model-charts">
           <div class="card reveal">
             <h2>Accuracy and macro-F1</h2>
-            <div style="position:relative;height:280px"><canvas id="acc"></canvas></div>
+            <p class="muted small models-chart-help">Higher values indicate better classification performance.</p>
+            <div class="models-chart"><canvas id="acc" aria-label="Accuracy and macro-F1 by model" role="img"></canvas></div>
           </div>
           <div class="card reveal">
             <h2>Calibration error (ECE)</h2>
-            <p class="muted small" style="margin:-6px 0 10px">Lower is better. Temperature scaling should lower it without changing accuracy.</p>
-            <div style="position:relative;height:250px"><canvas id="ece"></canvas></div>
+            <p class="muted small models-chart-help">Lower values indicate closer agreement between confidence and accuracy.</p>
+            <div class="models-chart"><canvas id="ece" aria-label="Calibration error before and after scaling" role="img"></canvas></div>
           </div>
         </div>
-        <div class="card reveal" style="margin-top:18px;overflow-x:auto">
-          <h2>All metrics (mean over training seeds)</h2>
-          <table class="data"><thead><tr><th>Model</th><th>Top-1 accuracy</th><th>Macro-F1</th><th>Precision</th><th>Recall</th><th>ECE before</th><th>ECE after</th></tr></thead>
-            <tbody id="rows"></tbody></table>
-          <p class="faint small" style="margin:12px 0 0">For reference, the base paper reports 89% top-1 accuracy for the full CricShotNet with YOLO cropping and segmentation [1].
-            These models do not use cropping, so a gap is expected.</p>
+        <div class="card reveal models-metrics">
+          <div class="card-head"><div><span class="eyebrow-s">Evaluation</span><h2>All model metrics</h2></div><span class="chip info" id="evaluation-count"></span></div>
+          <p class="muted small models-table-help">Metrics are averaged across the imported runs for each model. Unavailable values are shown as a dash.</p>
+          <div class="table-scroll" role="region" aria-label="Model evaluation metrics; scroll horizontally for more columns" tabindex="0">
+            <table class="data models-table"><thead><tr><th scope="col">Model</th><th scope="col">Top-1 accuracy</th><th scope="col">Macro-F1</th><th scope="col">Precision</th><th scope="col">Recall</th><th scope="col">ECE before</th><th scope="col">ECE after</th></tr></thead>
+              <tbody id="rows"></tbody></table>
+          </div>
         </div>
       </div>
-      <div class="card reveal import-card" id="import" style="margin-top:18px">
+      <div class="card reveal import-card models-import" id="import">
         <div class="card-head"><div><span class="eyebrow-s">Import</span><h2>Training results</h2></div></div>
-        <p class="muted small" style="margin:-6px 0 12px">Upload <code>results/summary.json</code> written by the training notebook. Importing again replaces the old results.</p>
-        <label class="dropzone" for="sum-file" style="padding:22px 14px">
-          <input type="file" id="sum-file" accept="application/json,.json">
-          <b>Choose summary.json</b>
+        <p class="muted small">Choose <code>results/summary.json</code> from your training output. Valid results replace the current evaluations.</p>
+        <label class="dropzone models-drop" for="sum-file" id="sum-drop">
+          <input type="file" id="sum-file" accept="application/json,.json" aria-label="Import training results JSON">
+          <span id="sum-icon" class="models-upload-icon"></span><span><b id="sum-label">Choose results file</b><span class="models-upload-help">summary.json · up to 2 MB</span></span>
         </label>
-        <div id="sum-msg" style="margin-top:12px"></div>
+        <div id="sum-msg" role="status" aria-live="polite"></div>
       </div>
     </main>
   </div>
+  <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
-  <script>
-    requireLogin();
-    sidebar("models.html");
-    const $ = id => document.getElementById(id);
-    const COLORS = { video: "#1f9d55", pose: "#c8102e", fusion: "#0f5c3a", pose3d: "#f59e0b", fusion3d: "#8f0b20" };
-    const DESC = { video: "EfficientNetV2-S + GRU", pose: "MediaPipe 2D pose + GRU", fusion: "Video and 2D pose combined",
-                   pose3d: "MediaPipe 3D pose + GRU", fusion3d: "Video and 3D pose combined" };
-    revealAll();
-
-    (async () => {
-      const d = await api("/api/models");
-      $("installed").innerHTML = ["fusion", "video", "pose", "fusion3d", "pose3d"].map(k => {
-        const on = d.installed.some(m => m.kind === k);
-        const label = { fusion: "Video + pose", video: "Video only", pose: "Pose only", fusion3d: "Video + 3D pose", pose3d: "3D pose only" }[k];
-        return `<div class="card kpi reveal ${on ? "tone-green" : "tone-gold"}"><div class="glow"></div><div class="ico">${icon(on ? "check" : "clock")}</div>
-          <b>${label}</b><p class="muted small" style="margin:4px 0 8px">${DESC[k]}</p><span class="chip ${on ? "ok" : "low"}">${on ? "installed" : "not installed"}</span></div>`;
-      }).join("");
-      revealAll();
-      if (!d.evaluations.length) {
-        $("empty").hidden = false;
-        const n = d.installed.length;
-        const steps = [
-          [n > 0, "Train on Google Colab", "Open <code>training/SmartCricket_Train.ipynb</code> in Colab with a GPU and run all cells. It downloads CricShot10k and trains the five models."],
-          [n >= 3, `Install the models (${n} of 5)`, "Unzip <code>smartcricket_models.zip</code> into the <code>models/</code> folder and restart the server. The cards above turn green."],
-          [false, "Import the results", `Upload <code>results/summary.json</code> in the <a href="#import">Training results</a> box below. The charts appear here.`],
-        ];
-        const next = steps.findIndex(x => !x[0]);
-        $("step-count").textContent = `${steps.filter(x => x[0]).length} of 3 done`;
-        $("setup").innerHTML = steps.map(([done, t, d2], i) => `<div class="su${done ? " done" : i === next ? " now" : ""}">
-          <span class="su-n">${done ? icon("check") : i + 1}</span><div><b>${t}</b><p>${d2}</p></div></div>`).join("");
-        $("cls-title").textContent = `The ${d.classes.length} shots it learns`;
-        $("classes").innerHTML = d.classes.map(c => `<span class="chip info">${esc(c)}</span>`).join("");
-        revealAll();
-        return;
-      }
-      $("content").hidden = false;
-      const E = ["video", "pose", "fusion", "pose3d", "fusion3d"].map(k => d.evaluations.find(e => e.model === k)).filter(Boolean);
-      const pct = v => v == null ? "–" : (v * 100).toFixed(2) + "%";
-      const best = Math.max(...E.map(e => e.macro_f1));
-      $("rows").innerHTML = E.map(e => `<tr><td><b>${esc(e.label)}</b> ${e.macro_f1 === best ? '<span class="chip ok">best</span>' : ""}</td>
-        <td>${pct(e.accuracy)}</td><td>${pct(e.macro_f1)}</td><td>${pct(e.precision)}</td><td>${pct(e.recall)}</td>
-        <td>${e.ece_before?.toFixed(4) ?? "–"}</td><td>${e.ece_after?.toFixed(4) ?? "–"}</td></tr>`).join("");
-
-      const dark = document.documentElement.dataset.theme === "dark";
-      const tick = dark ? "#8a94a6" : "#6b7280", grid = dark ? "rgba(148,163,184,.12)" : "rgba(15,30,60,.06)";
-      const anim = { duration: reduceMotion ? 0 : 1200, easing: "easeOutQuart" };
-      new Chart($("acc"), {
-        type: "bar",
-        data: { labels: ["Top-1 accuracy", "Macro-F1", "Precision", "Recall"],
-          datasets: E.map(e => ({ label: e.label, data: [e.accuracy, e.macro_f1, e.precision, e.recall].map(v => v * 100),
-                                  backgroundColor: COLORS[e.model], borderRadius: 8, maxBarThickness: 34 })) },
-        options: { maintainAspectRatio: false, animation: anim,
-          plugins: { legend: { labels: { color: tick } }, tooltip: { callbacks: { label: c => ` ${c.dataset.label}: ${c.parsed.y.toFixed(2)}%` } } },
-          scales: { x: { grid: { display: false }, ticks: { color: tick } }, y: { beginAtZero: true, max: 100, grid: { color: grid }, ticks: { color: tick, callback: v => v + "%" } } } },
-      });
-      new Chart($("ece"), {
-        type: "bar",
-        data: { labels: E.map(e => e.label), datasets: [
-          { label: "Before scaling", data: E.map(e => e.ece_before), backgroundColor: "#f59e0b", borderRadius: 8, maxBarThickness: 34 },
-          { label: "After scaling", data: E.map(e => e.ece_after), backgroundColor: "#10b981", borderRadius: 8, maxBarThickness: 34 }] },
-        options: { maintainAspectRatio: false, animation: anim, plugins: { legend: { labels: { color: tick } } },
-          scales: { x: { grid: { display: false }, ticks: { color: tick } }, y: { beginAtZero: true, grid: { color: grid }, ticks: { color: tick } } } },
-      });
-    })().catch(e => toast(e.message, "error"));
-
-    $("sum-file").onchange = async () => {
-      const f = $("sum-file").files[0];
-      if (!f) return;
-      const form = new FormData();
-      form.append("file", f);
-      try {
-        const r = await api("/api/admin/evaluations", { method: "POST", body: form });
-        $("sum-msg").innerHTML = alertHtml("info", `Imported results for: ${Object.keys(r.imported).join(", ")}. Reloading…`);
-        toast("Results imported", "ok");
-        setTimeout(() => location.reload(), 900);
-      } catch (err) { $("sum-msg").innerHTML = alertHtml("error", err.message); }
-      $("sum-file").value = "";
-    };
-  </script>
+  <script src="js/models.js?v=1"></script>
 </body>
 </html>

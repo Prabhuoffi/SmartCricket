@@ -30,8 +30,7 @@ FRAME_W = 480  # width of saved frame images
 class VideoService:
     def __init__(self):
         self.models: dict[str, dict] = {}
-        self.backbone = None
-        self.last_block = None
+        self.backbones: dict[str, tuple] = {}   # backbone name -> (model, last conv block), loaded on first use
         self.pose = None
         self.lock = threading.Lock()
         self.device = torch.device(settings.torch_device)
@@ -46,9 +45,6 @@ class VideoService:
         return out
 
     def _load(self, kind: str):
-        if self.backbone is None and kind not in ("pose", "pose3d"):
-            self.backbone, self.last_block = sc.build_backbone()
-            self.backbone.to(self.device)
         if self.pose is None:
             self.pose = self._make_pose()
         if kind not in self.models:
@@ -56,12 +52,24 @@ class VideoService:
             if not path.exists():
                 raise FileNotFoundError(f"{path.name} is not installed")
             ckpt = torch.load(path, map_location="cpu", weights_only=False)
-            model = sc.build_model(kind)
-            model.load_state_dict(ckpt["state_dict"])
+            state = ckpt["state_dict"]
+            # the video stream's input size tells which backbone the model was trained on
+            gru = next((v for k, v in state.items() if k in ("gru.weight_ih_l0", "video.gru.weight_ih_l0")), None)
+            feat_dim = gru.shape[1] if gru is not None and kind not in ("pose", "pose3d") else sc.FEAT_DIM
+            backbone = ckpt.get("backbone") or next(b for b, d in sc.BACKBONES.items() if d == feat_dim)
+            classes = ckpt.get("classes", sc.BASE_CLASSES)   # the shots this model was trained on
+            model = sc.build_model(kind, feat_dim=feat_dim, n_classes=len(classes))
+            model.load_state_dict(state)
             model.to(self.device).eval()
             self.models[kind] = {"model": model, "T": float(ckpt.get("temperature", 1.0)),
-                                 "classes": ckpt.get("classes", sc.CLASSES), "meta": {
-                                     k: ckpt.get(k) for k in ("seed", "val_macro_f1", "pose_model", "backbone")}}
+                                 "classes": classes, "backbone": backbone,
+                                 "feat_dim": feat_dim, "crop": ckpt.get("crop") == "pose", "meta": {
+                                     k: ckpt.get(k) for k in ("seed", "val_macro_f1", "pose_model", "backbone", "crop")}}
+        entry = self.models[kind]
+        if kind not in ("pose", "pose3d") and entry["backbone"] not in self.backbones:
+            ft = settings.model_dir / sc.FT_FILE if entry["backbone"].endswith(sc.FT_SUFFIX) else None
+            net, last = sc.build_backbone(entry["backbone"], ft_weights=ft)
+            self.backbones[entry["backbone"]] = (net.to(self.device), last)
 
     def _make_pose(self):
         import mediapipe as mp  # noqa: F401
@@ -252,18 +260,22 @@ class VideoService:
         entry = self.models[kind]
         model, T, classes = entry["model"], entry["T"], entry["classes"]
         acts, grads, cams = {}, {}, None
+        # models trained on batter crops get the same crop, from the same first-reported person as in training
+        box = sc.batter_box(first, w, h) if entry["crop"] else None
 
         t2 = time.perf_counter()
         with torch.enable_grad():
             if kind in ("pose", "pose3d"):
-                feats = torch.zeros(1, sc.NUM_FRAMES, sc.FEAT_DIM)
+                feats = torch.zeros(1, sc.NUM_FRAMES, entry["feat_dim"])
             else:
+                backbone, last_block = self.backbones[entry["backbone"]]
+
                 def keep(_m, _i, o):  # store the activations and, on backward, their gradients
                     acts["a"] = o
                     o.register_hook(lambda g: grads.__setitem__("g", g))
 
-                h1 = self.last_block.register_forward_hook(keep)
-                feats = self.backbone(sc.to_tensor(frames).to(self.device)).unsqueeze(0)
+                h1 = last_block.register_forward_hook(keep)
+                feats = backbone(sc.to_tensor(sc.crop_frames(frames, box)).to(self.device)).unsqueeze(0)
                 h1.remove()
             logits, att = model(feats.to(self.device), pose.to(self.device))
             probs = torch.softmax(logits.detach() / T, 1)[0].cpu().numpy()
@@ -271,7 +283,7 @@ class VideoService:
             if kind not in ("pose", "pose3d"):
                 # Grad-CAM (Selvaraju et al.): gradients of the top class score on the last conv block
                 model.zero_grad()
-                self.backbone.zero_grad()
+                backbone.zero_grad()
                 logits[0, top].backward()
                 a, g = acts["a"].detach(), grads["g"].detach()          # (15, C, 7, 7)
                 cam = torch.relu((g.mean((2, 3), keepdim=True) * a).sum(1))
@@ -285,7 +297,7 @@ class VideoService:
         for t, f in enumerate(frames):
             _save(out_dir / f"frame_{t:02d}.jpg", f)
             if cams is not None:
-                _save(out_dir / f"heat_{t:02d}.jpg", _overlay(f, cams[t]))
+                _save(out_dir / f"heat_{t:02d}.jpg", _overlay(f, cams[t], box=box))
         thumb = out_dir / (f"heat_{key:02d}.jpg" if cams is not None else f"frame_{key:02d}.jpg")
         (out_dir / "thumb.jpg").write_bytes(thumb.read_bytes())
         timing["save_ms"] = _ms(t3)
@@ -300,6 +312,7 @@ class VideoService:
             "confidence": round(float(probs[top]), 4),
             "uncertain": bool(probs[top] < settings.uncertain_threshold),
             "top3": [{"shot": classes[i], "prob": round(float(probs[i]), 4)} for i in order],
+            "family": sc.family_probs(probs, classes)[0],
             "attention": [round(float(x), 4) for x in attention],
             "key_frame": key,
             "has_heatmaps": cams is not None,
@@ -409,7 +422,12 @@ def _save(path, rgb):
     cv2.imwrite(str(path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, 85])
 
 
-def _overlay(rgb, cam, alpha=0.45):
+def _overlay(rgb, cam, alpha=0.45, box=None):
+    if box is not None:   # the model saw only the batter crop: draw its heatmap inside that box
+        x1, y1, x2, y2 = box
+        out = rgb.copy()
+        out[y1:y2, x1:x2] = _overlay(np.ascontiguousarray(rgb[y1:y2, x1:x2]), cam, alpha)
+        return out
     heat = cv2.resize((cam * 255).astype(np.uint8), (rgb.shape[1], rgb.shape[0]), interpolation=cv2.INTER_CUBIC)
     heat = cv2.cvtColor(cv2.applyColorMap(heat, cv2.COLORMAP_JET), cv2.COLOR_BGR2RGB)
     return cv2.addWeighted(rgb, 1 - alpha, heat, alpha, 0)

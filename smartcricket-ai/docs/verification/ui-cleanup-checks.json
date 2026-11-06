@@ -1,0 +1,56 @@
+{
+  "success": true,
+  "actions": [
+    "Removed paper paragraph; valid import updates five models without reload and disables duplicate imports",
+    "Malformed empty import shows inline error, restores input, preserves existing metrics",
+    "Unavailable Chart.js keeps the complete metrics table and a readable fallback",
+    "Missing baseline shows a compact actionable state instead of an inactive form and previews",
+    "Goal form aligns all three controls; actions have spacing; archived goals reopen before retest actions appear"
+  ],
+  "unexpectedRuntimeErrors": [],
+  "overflows": [],
+  "screens": [
+    {
+      "name": "models-clean-desktop",
+      "clientWidth": 1440,
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "models-fallback-desktop",
+      "clientWidth": 1440,
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "models-fallback-mobile",
+      "clientWidth": 390,
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "models-clean-mobile",
+      "clientWidth": 390,
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "practice-empty-mobile",
+      "clientWidth": 390,
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "name": "practice-form-clean-desktop",
+      "clientWidth": 1440,
+      "width": 1440,
+      "overflow": false
+    },
+    {
+      "name": "practice-form-clean-mobile",
+      "clientWidth": 390,
+      "width": 390,
+      "overflow": false
+    }
+  ]
+}

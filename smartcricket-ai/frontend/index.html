@@ -5,7 +5,7 @@
   <base href="/app/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SmartCricket AI: Batting analysis and virtual coaching</title>
-  <meta name="description" content="Upload a batting photo or clip. SmartCricket AI maps 33 body points, measures your joint angles, recognises the shot and explains it like a coach.">
+  <meta name="description" content="Understand your batting with photo posture reports, video movement analysis, personalised drills, and progress tracking. Shot recognition is available with trained models.">
   <link rel="stylesheet" href="css/landing.css?v=48">
   <script>
     // Every load or refresh starts at the hero, not where the visitor last scrolled.
@@ -49,8 +49,8 @@
             <span class="w"><span>See</span></span> <span class="w"><span>every</span></span> <span class="w"><span class="red">stroke.</span></span><br>
             <span class="w"><span class="outline">Understand</span></span> <span class="w"><span>every</span></span> <span class="w"><span>angle.</span></span>
           </h1>
-          <p class="lead rv">Upload a photo or a short clip of your batting. SmartCricket AI maps 33 points on your body, measures your joint angles,
-            recognises the shot and explains it in plain words, like a coach standing beside the nets.</p>
+          <p class="lead rv">Start with a batting photo for a posture report, or upload a clip to explore your movement.
+            Understand your measurements, follow a daily practice plan, and track your consistency. Trained video models also recognise shot types.</p>
           <div class="ctas rv d1">
             <a class="btn btn-red mag" href="login.html?mode=register">Start free analysis <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
             <a class="btn btn-line" href="#demo">See it in action</a>
@@ -141,13 +141,13 @@
       <div class="wrap">
         <div class="head" style="justify-content:center;text-align:center;flex-direction:column;align-items:center">
           <span class="eyebrow rv">Three steps</span>
-          <h2 class="rv d1" style="margin-top:14px">From the nets to <span class="hl">insight</span> in seconds.</h2>
+          <h2 class="rv d1" style="margin-top:14px">From your first capture to <span class="hl">focused practice.</span></h2>
         </div>
         <div class="steps rv" id="steps">
           <div class="rail"><i></i></div>
           <div class="step"><div class="num">1</div><h3>Capture</h3><p>Upload a side-on photo, a single stroke or a whole nets video, or go live with your laptop or phone camera.</p></div>
-          <div class="step"><div class="num">2</div><h3>Analyse</h3><p>The AI checks the input quality, follows the batter, measures your joints in 2D and 3D and finds every shot in the video.</p></div>
-          <div class="step"><div class="num">3</div><h3>Improve</h3><p>Your AI Coach turns the numbers into a daily drill plan, counts your reps live and tracks your progress.</p></div>
+          <div class="step"><div class="num">2</div><h3>Understand</h3><p>Review capture quality, visible joint measurements, and key video frames. Shot labels and heatmaps are available with trained models.</p></div>
+          <div class="step"><div class="num">3</div><h3>Practise and track</h3><p>Check in, follow your daily drills, and review your weekly summary. Your dashboard guides you to the next step.</p></div>
         </div>
       </div>
     </section>
@@ -177,10 +177,10 @@
     <section>
       <div class="wrap">
         <div class="stats">
-          <div class="stat rv"><b data-count="10086">0</b><span>training clips</span></div>
-          <div class="stat rv d1"><b data-count="15">0</b><span>shot types recognised</span></div>
+          <div class="stat rv"><b data-count="10086">0</b><span>clips in the research dataset</span></div>
+          <div class="stat rv d1"><b data-count="15">0</b><span>shot classes for trained models</span></div>
           <div class="stat rv d2"><b data-count="33">0</b><span>body points tracked</span></div>
-          <div class="stat rv d3"><b data-count="60">0</b><span>live frames a second</span></div>
+          <div class="stat rv d3"><b data-count="8">0</b><span>joint angles with visibility checks</span></div>
         </div>
       </div>
     </section>
@@ -195,7 +195,7 @@
           <div class="aud rv"><span class="big">01</span><h3>Players</h3><p>Understand your own stroke without waiting for a coach.</p>
             <ul><li>Posture report from one photo</li><li>Live mirror with a voice coach</li><li>Daily drills, streaks and levels</li></ul></div>
           <div class="aud rv d1"><span class="big">02</span><h3>Coaches</h3><p>Back up what you see with numbers you can show.</p>
-            <ul><li>Shadow-the-pro ghost and stroke match</li><li>3D angles that ignore camera angle</li><li>One-click PDF reports to share</li></ul></div>
+            <ul><li>Reference movement comparisons</li><li>Estimated 2D and 3D joint angles</li><li>One-click PDF reports to share</li></ul></div>
           <div class="aud rv d2"><span class="big">03</span><h3>Academies</h3><p>Give every player structured feedback, at scale.</p>
             <ul><li>Admin console for every player</li><li>See who needs a nudge</li><li>Reference clips for each shot</li></ul></div>
         </div>
@@ -277,33 +277,34 @@
     // ---------------------------------------------------------- features
     $("feature-grid").innerHTML = [
       ["camera", "Photo posture report", "33 body points, 8 joint angles and a 3D view from one photo. Hidden joints are left out, never guessed.", "Know your stance"],
-      ["video", "Video analysis", "Your skeleton on every frame, how each joint moved and your peak moment. Long nets videos are split into shots.", "See the whole stroke"],
+      ["video", "Video analysis", "Pose tracking on sampled frames, joint movement and a key moment. Longer videos can be split into detected strokes.", "Explore your movement"],
       ["mirror", "Live mirror", "Train in front of your camera: live skeleton and angles, reps counted for you, nothing uploaded.", "New · on-device"],
       ["ghost", "Shadow the pro", "A model player's ghost moves on your body. Copy it and get a live match score and stroke comparison.", "New · learn by copying"],
       ["dumbbell", "Daily training coach", "Three drills a day chosen from your own numbers, a check-in that respects soreness, levels and streaks.", "Practise the right thing"],
-      ["chat", "One AI Coach", "Ask anything on any page. Answers use only your measured numbers and know your plan and progress.", "Plain-language advice"],
-      ["cube", "3D joint angles", "Angles measured in 3D are not fooled by the camera position, so front-on clips still give fair numbers.", "New · more accurate"],
+      ["chat", "AI coaching", "Ask about your results and training. When an AI provider is configured, feedback uses your stored measurements as context.", "Explain your results"],
+      ["cube", "Estimated 3D angles", "Explore estimated joint positions in 3D alongside 2D measurements. Visibility and camera view still affect reliability.", "Another view of your posture"],
       ["shield", "Input quality check", "Every upload is scored for sharpness, light, framing and view, with a tip to film better next time.", "New · trust the numbers"],
       ["chart", "Progress and reports", "Weekly coach summary, trend charts, history and one-click branded PDF reports.", "Track your growth"],
     ].map(([ic, t, d, tag], i) => `<div class="feature rv d${i % 3}"><div class="ic">${svg(ic)}</div><h3>${t}</h3><p>${d}</p><span class="tag">${tag}</span></div>`).join("");
 
     // ---------------------------------------------------------- what's new
     $("new-list").innerHTML = [
+      ["chart", "Guided sessions", "Your dashboard recommends the next step from your saved reports, check-in, drills, and daily question.", "A clear path through every session"],
       ["mirror", "Live mirror", "Skeleton and angles live, reps and holds counted automatically.", "Practise with feedback, not guesswork"],
       ["mic", "Voice coach", "Counts your reps and corrects you out loud; say \"start\" or \"stop\" hands-free.", "Eyes on the drill, not the screen"],
       ["ghost", "Shadow the pro", "A gold ghost of a model player on your body, with a live match score.", "Learn a shot by copying it"],
       ["phone", "Phone camera and QR", "Scan a code and train with your phone propped up at the nets.", "Train anywhere you bat"],
-      ["cut", "Whole nets videos", "Upload one long video; every shot is found and analysed on its own.", "No trimming clips by hand"],
+      ["cut", "Whole nets videos", "Longer clips can be split into detected strokes, each with its own report.", "Review detected strokes individually"],
       ["cube", "3D pose and quality score", "Angles in 3D plus a quality check on every upload.", "Numbers you can trust"],
     ].map(([ic, t, d, b], i) => `<div class="nl rv d${i % 3}"><div class="nl-ic">${svg(ic)}</div><div><b>${t}</b><p>${d}</p><span class="nl-b">${b}</span></div></div>`).join("");
 
     // ---------------------------------------------------------- faq
     $("faq-list").innerHTML = [
       ["Do I need special equipment?", "No. A phone camera is enough. Film side-on, at hip height, with the whole batter in view."],
-      ["Does a photo tell me which shot I played?", "No, on purpose. A single photo cannot show how the bat moves, so photos give a posture report. Upload a short clip to have the shot recognised."],
+      ["Does a photo tell me which shot I played?", "A photo gives a posture report. Upload a short clip for movement analysis; shot recognition also requires trained video models to be installed."],
       ["Who can see my photos and videos?", "Only you. Files stay on the SmartCricket server and are linked to your account. The AI coach receives your numbers only, never your images."],
-      ["How accurate is it?", "Shot recognition is trained and tested on the CricShot10k dataset of 10,086 labelled clips. Every prediction comes with a calibrated confidence, and unsure results are clearly flagged."],
-      ["Does live mirror record or upload my camera?", "No. Pose tracking runs inside your browser and each frame is thrown away straight after. Only the numbers you choose to save (a session summary, or a best moment you press save on) are stored."],
+      ["How accurate is it?", "Accuracy depends on the installed model, capture quality, camera view, and how closely the footage matches the training data. The admin Model results page shows imported evaluation metrics. Prediction confidence is an estimate, not a guarantee."],
+      ["Does live mirror record or upload my camera?", "Live pose tracking runs in your browser. Saving a session stores its numerical summary. If you choose shot recognition, sampled camera frames are uploaded for analysis and then discarded. Photos you explicitly save become reports in History."],
       ["Can I use my phone at the nets?", "Yes. Turn on phone mode on the Live mirror page, scan the QR code with your phone on the same Wi-Fi, sign in and press Start camera. You can also upload a whole nets video: each shot is found and analysed separately."],
       ["Does the AI coach replace a real coach?", "No. It explains your measured results in plain words and suggests drills. Angles are 2D estimates from one camera, not a judgement of right or wrong technique."],
     ].map(([q, a], i) => `<div class="qa rv d${Math.min(i, 3)}"><button aria-expanded="false">${q}<i>+</i></button><div class="ans"><div><p>${a}</p></div></div></div>`).join("");

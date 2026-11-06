@@ -41,6 +41,7 @@
       </div>
     </main>
   </div>
+  <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
   <script>
     requireLogin();
@@ -72,7 +73,13 @@
           <span class="sc-ic">${icon(ok ? "check" : ic)}</span><div><b>${t}</b><small>${v}</small></div>
           <span class="sc-go">${ok ? "Done" : "Set up →"}</span></a>`).join("");
 
-      new Chart($("daily"), {
+      if (typeof Chart === "undefined") {
+        const panel = $("daily").parentElement;
+        panel.style.height = "auto";
+        panel.innerHTML = `<p class="muted small">Chart unavailable. Activity totals are shown below.</p>
+          <table aria-label="Analyses per day"><thead><tr><th>Date</th><th>Analyses</th></tr></thead>
+          <tbody>${d.daily.map(x => `<tr><td>${fmtDay(x.date)}</td><td>${x.count}</td></tr>`).join("")}</tbody></table>`;
+      } else new Chart($("daily"), {
         type: "bar",
         data: { labels: d.daily.map(x => fmtDay(x.date)), datasets: [{ data: d.daily.map(x => x.count), backgroundColor: d.daily.map((x, i) => i === d.daily.length - 1 ? "#c8102e" : "#0f5c3a"), borderRadius: 6, maxBarThickness: 26 }] },
         options: { maintainAspectRatio: false, animation: { duration: reduceMotion ? 0 : 1100 }, plugins: { legend: { display: false } },

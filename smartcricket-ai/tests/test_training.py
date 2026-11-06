@@ -132,8 +132,10 @@ def test_temperature_scaling_reduces_overconfidence():  # UT-10
     assert sc.expected_calibration_error(cal, y.numpy()) < sc.expected_calibration_error(probs, y.numpy())
 
 
-def test_notebook_cells_compile():
-    nb = json.loads((ROOT / "training" / "SmartCricket_Train.ipynb").read_text())
+@pytest.mark.parametrize("name", ["SmartCricket_Train.ipynb", "SmartCricket_Train_Fast.ipynb",
+                                 "SmartCricket_Train_FineTune.ipynb"])
+def test_notebook_cells_compile(name):
+    nb = json.loads((ROOT / "training" / name).read_text())
     common = (ROOT / "training" / "sc_common.py").read_text()
     for i, c in enumerate(nb["cells"]):
         if c["cell_type"] != "code":
@@ -144,3 +146,32 @@ def test_notebook_cells_compile():
             continue
         src = "\n".join("pass" if re.match(r"\s*!", l) else l for l in src.split("\n"))
         compile(src, f"cell{i}", "exec")
+
+
+@pytest.mark.parametrize("name", ["SmartCricket_Train.ipynb", "SmartCricket_Train_Fast.ipynb",
+                                 "SmartCricket_Train_FineTune.ipynb"])
+def test_notebook_selects_on_validation_before_test_evaluation(name):
+    """A tempting test winner must never override the validation winner."""
+    nb = json.loads((ROOT / "training" / name).read_text())
+    sources = [cell["source"] for cell in nb["cells"] if cell["cell_type"] == "code"]
+    selection = next(src for src in sources if src.startswith("# Select the model before test evaluation"))
+    evaluation = next(src for src in sources if "p_cal = torch.softmax" in src)
+    assert sources.index(selection) < sources.index(evaluation)
+    runs = {
+        ("video", 1): {"val_f1": 0.80, "test_macro_f1": 0.40},
+        ("video", 2): {"val_f1": 0.76, "test_macro_f1": 0.45},
+        ("fusion", 1): {"val_f1": 0.90, "test_macro_f1": 0.99},
+        ("fusion", 2): {"val_f1": 0.50, "test_macro_f1": 0.98},
+    }
+    context = {"np": np, "KINDS": ["video", "fusion"], "SEEDS": [1, 2], "runs": runs}
+    exec(selection, context)
+    # Mean validation performance chooses video despite fusion's best individual
+    # validation run and much higher test scores.
+    assert (context["best_kind"], context["best_seed"]) == ("video", 1)
+    for run in runs.values():
+        run["test_macro_f1"] = 1 - run["test_macro_f1"]
+    exec(selection, context)
+    assert (context["best_kind"], context["best_seed"]) == ("video", 1)
+    runs[("fusion", 2)]["val_f1"] = 0.95
+    exec(selection, context)
+    assert (context["best_kind"], context["best_seed"]) == ("fusion", 2)

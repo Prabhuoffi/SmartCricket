@@ -1,0 +1,18 @@
+{
+  "checks": [
+    "1440 active selected row fully visible after open",
+    "1440 popup open does not move the page",
+    "1440 opaque panel and no overflow",
+    "1440 Home active row fully visible",
+    "1440 End active row fully visible",
+    "390 active selected row fully visible after open",
+    "390 popup open does not move the page",
+    "390 opaque panel and no overflow",
+    "390 Home active row fully visible",
+    "390 End active row fully visible",
+    "Active row remains visible after resize",
+    "Resized panel stays inside viewport"
+  ],
+  "runtimeErrors": [],
+  "success": true
+}

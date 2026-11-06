@@ -1,0 +1,111 @@
+/* All single selects share this control; their native elements retain form semantics. */
+.sc-select {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  font: inherit;
+  vertical-align: middle;
+}
+.sc-select[hidden], .sc-select-panel[hidden], .sc-select-error[hidden], .sc-select-search-wrap[hidden], .sc-select-empty[hidden] { display: none !important; }
+select.sc-select-native {
+  position: absolute !important;
+  inset: 0 auto auto 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: 1px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  pointer-events: none !important;
+  white-space: nowrap !important;
+}
+.sc-select .sc-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 46px;
+  margin: 0;
+  padding: 11px 13px;
+  border: 1.5px solid var(--border, #dce4de);
+  border-radius: var(--radius-sm, 12px);
+  background: var(--surface-solid, #fff);
+  color: var(--ink, #0b1a12);
+  font: inherit;
+  font-size: .88rem;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  box-shadow: none;
+  transform: none;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.sc-select .sc-select-trigger:hover:not(:disabled) { border-color: var(--pitch, #1f9d55); background: var(--surface-solid, #fff); box-shadow: none; transform: none; }
+.sc-select .sc-select-trigger:focus-visible, .sc-select.is-open .sc-select-trigger { outline: 2px solid var(--pitch, #1f9d55); outline-offset: 2px; border-color: var(--pitch, #1f9d55); box-shadow: none; }
+.sc-select .sc-select-trigger[aria-invalid="true"] { border-color: var(--red, #dc3545); }
+.sc-select .sc-select-trigger.is-placeholder { color: var(--ink-2, #4a5a50); }
+.sc-select .sc-select-trigger:disabled { background: var(--bg, #fbf7ee); color: var(--ink-3, #87958b); cursor: not-allowed; opacity: .75; box-shadow: none; }
+.sc-select-value { display: block; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-select-arrow { display: inline-flex; flex: 0 0 18px; width: 18px; height: 18px; color: var(--ink-2, #4a5a50); transition: transform .15s; }
+.sc-select-arrow svg { display: block; width: 18px; height: 18px; }
+.sc-select.is-open .sc-select-arrow { transform: rotate(180deg); }
+.sc-select--compact { display: inline-block; width: auto; }
+.sc-select--compact .sc-select-trigger { min-height: 44px; padding: 9px 11px; }
+.sc-select-error { display: block; margin-top: 8px; color: var(--red, #dc3545); font-size: .78rem; font-weight: 500; line-height: 1.5; }
+.sc-select-panel {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  isolation: isolate;
+  max-height: 360px;
+  min-width: 0;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--border, #dce4de);
+  border-radius: 13px;
+  background: var(--surface-solid, #fff);
+  color: var(--ink, #0b1a12);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, .18), 0 2px 7px rgba(0, 0, 0, .08);
+  font-family: var(--font, system-ui, sans-serif);
+  font-size: .85rem;
+  line-height: 1.5;
+  text-align: left;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+.sc-select-search-wrap { display: flex; flex: 0 0 auto; align-items: center; gap: 9px; min-width: 0; min-height: 46px; margin: 0 0 6px; padding: 0 10px; border: 1px solid var(--border, #dce4de); border-radius: 9px; background: var(--bg, #fbf7ee); }
+.sc-select-search-wrap:focus-within { border-color: var(--pitch, #1f9d55); box-shadow: 0 0 0 1px var(--pitch, #1f9d55); }
+.sc-select-search-wrap > svg { flex: 0 0 18px; width: 18px; height: 18px; color: var(--ink-2, #4a5a50); }
+.sc-select-search-wrap .sc-select-search { display: block; width: 100%; min-width: 0; min-height: 44px; margin: 0; padding: 8px 0; border: 0; border-radius: 0; background: transparent; color: var(--ink, #0b1a12); font: inherit; font-size: 16px; font-weight: 400; line-height: 1.4; outline: none; box-shadow: none; }
+.sc-select-search-wrap .sc-select-search:focus { border: 0; outline: none; box-shadow: none; }
+.sc-select-search::placeholder { color: var(--ink-3, #87958b); opacity: 1; }
+.sc-select-list { position: relative; flex: 1 1 auto; min-height: 0; margin: 0; padding: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scroll-behavior: auto; scrollbar-width: thin; scrollbar-color: var(--ink-3, #87958b) transparent; touch-action: pan-y; }
+.sc-select-option { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; margin: 0; padding: 10px 11px; border-radius: 8px; background: transparent; color: var(--ink, #0b1a12); font: inherit; line-height: 1.5; cursor: pointer; user-select: none; }
+.sc-select-option.is-active { background: var(--brand-soft, #edf5ef); box-shadow: inset 0 0 0 1px var(--pitch, #1f9d55); }
+.sc-select-option[aria-selected="true"] { background: var(--pitch-soft, #e5f4e9); font-weight: 700; }
+.sc-select-option[aria-selected="true"].is-active { box-shadow: inset 0 0 0 1px var(--pitch, #1f9d55); }
+.sc-select-option[aria-disabled="true"] { color: var(--ink-3, #87958b); cursor: not-allowed; opacity: .65; }
+.sc-select-option-text { display: block; flex: 1; min-width: 0; overflow-wrap: anywhere; white-space: normal; }
+.sc-select-check { display: inline-flex; flex: 0 0 18px; width: 18px; height: 18px; color: var(--pitch, #1f9d55); visibility: hidden; }
+.sc-select-check svg { display: block; width: 18px; height: 18px; }
+.sc-select-option[aria-selected="true"] .sc-select-check { visibility: visible; }
+.sc-select-group + .sc-select-group { margin-top: 5px; padding-top: 5px; border-top: 1px solid var(--border, #dce4de); }
+.sc-select-group-label { padding: 8px 11px 5px; color: var(--ink-2, #4a5a50); font-size: .73rem; font-weight: 700; line-height: 1.5; letter-spacing: .02em; overflow-wrap: anywhere; }
+.sc-select-empty { flex: 0 1 auto; margin: 0; padding: 16px 11px; color: var(--ink-2, #4a5a50); font-size: .82rem; line-height: 1.6; overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { .sc-select-trigger, .sc-select-arrow { transition: none !important; } }

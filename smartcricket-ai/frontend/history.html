@@ -22,6 +22,7 @@
       <div class="cards" id="cards"></div>
     </main>
   </div>
+  <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
   <script>
     requireLogin();
@@ -33,10 +34,16 @@
     revealAll();
 
     let rows = [];
-    (async () => {
-      rows = await api("/api/history");
-      render(rows);
-    })().catch(e => toast(e.message, "error"));
+    async function loadHistory() {
+      try {
+        rows = await api("/api/history");
+        filterHistory();
+      } catch (e) {
+        $("cards").innerHTML = `<div class="card" style="grid-column:1/-1">${alertHtml("error", e.message)}<button type="button" class="ghost" id="retry-history">Retry history</button></div>`;
+        $("retry-history").onclick = loadHistory;
+      }
+    }
+    loadHistory();
 
     function render(list) {
       if (!list.length) {
@@ -50,9 +57,9 @@
       $("cards").innerHTML = list.map((a, i) => {
         const s = a.summary || {};
         const chip = a.mode === "image"
-          ? `<span class="chip ${s.visible >= 25 ? "ok" : s.visible ? "low" : "off"} badge">${s.visible}/33 visible</span>`
+          ? `<span class="chip ${s.visible >= 25 ? "ok" : s.visible ? "low" : "off"} badge">${s.visible ?? 0}/33 visible</span>`
           : `<span class="chip info badge">${esc(a.shot || "Movement")}</span>`;
-        const measured = Object.values(a.angles || {}).filter(v => v.deg !== null).length;
+        const measured = Object.values(a.angles || {}).filter(v => Number.isFinite(v?.deg)).length;
         return `<a class="card hcard lift reveal" href="${resultPage(a)}" style="color:inherit;animation-delay:${i * 60}ms">
           <div class="ph"><img data-src="${a.files.output}" alt="">${chip}</div>
           <div class="body"><b>${esc(a.session_label || a.original_name)}</b>
@@ -64,10 +71,11 @@
       $("cards").querySelectorAll("img[data-src]").forEach(img => loadImage(img, img.dataset.src));
     }
 
-    $("search").oninput = e => {
-      const q = e.target.value.trim().toLowerCase();
+    function filterHistory() {
+      const q = $("search").value.trim().toLowerCase();
       render(rows.filter(a => `${a.original_name} ${a.session_label || ""} ${a.shot || ""}`.toLowerCase().includes(q)));
-    };
+    }
+    $("search").oninput = filterHistory;
     $("csv").onclick = () => openBlob("/api/reports/history.csv", "smartcricket_history.csv").then(() => toast("CSV downloaded", "ok")).catch(e => toast(e.message, "error"));
   </script>
 </body>

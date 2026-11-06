@@ -1,0 +1,297 @@
+{
+ "best_model": "fusion",
+ "results": [
+  {
+   "model": "video",
+   "seed": 1,
+   "top1": 0.5616757176105508,
+   "top3": 0.8681148176881304,
+   "macro_f1": 0.5533138195316814,
+   "precision": 0.5653581572436291,
+   "recall": 0.561002911570934,
+   "temperature": 1.0761710405349731,
+   "ece_before": 0.042086731610694005,
+   "ece_after": 0.02862387816974411
+  },
+  {
+   "model": "pose",
+   "seed": 1,
+   "top1": 0.495733126454616,
+   "top3": 0.7664856477889838,
+   "macro_f1": 0.4700076234395031,
+   "precision": 0.4783564975666293,
+   "recall": 0.49461094344153256,
+   "temperature": 0.8986148238182068,
+   "ece_before": 0.08327075162190074,
+   "ece_after": 0.04683845535302181
+  },
+  {
+   "model": "fusion",
+   "seed": 1,
+   "top1": 0.6392552366175329,
+   "top3": 0.8960434445306439,
+   "macro_f1": 0.6223682591965571,
+   "precision": 0.6229869494080038,
+   "recall": 0.6271713374651243,
+   "temperature": 1.0919028520584106,
+   "ece_before": 0.04003925036560944,
+   "ece_after": 0.031069540938173178
+  },
+  {
+   "model": "pose3d",
+   "seed": 1,
+   "top1": 0.4918541505042669,
+   "top3": 0.7765709852598914,
+   "macro_f1": 0.46680119260709557,
+   "precision": 0.4752488499879358,
+   "recall": 0.4959486073986524,
+   "temperature": 0.894403874874115,
+   "ece_before": 0.0640831709694178,
+   "ece_after": 0.04372939841982189
+  },
+  {
+   "model": "fusion3d",
+   "seed": 1,
+   "top1": 0.6252909231962762,
+   "top3": 0.9014740108611327,
+   "macro_f1": 0.6069248181553962,
+   "precision": 0.6081539000053896,
+   "recall": 0.6181112659419694,
+   "temperature": 1.106033205986023,
+   "ece_before": 0.05388645398884989,
+   "ece_after": 0.03968917014896637
+  }
+ ],
+ "robustness": [
+  {
+   "model": "E1 Video only",
+   "factor": "camera view",
+   "group": "angled",
+   "clips": 797,
+   "top1": 0.5633626097867002,
+   "macro_f1": 0.531395668403799
+  },
+  {
+   "model": "E1 Video only",
+   "factor": "camera view",
+   "group": "front-on",
+   "clips": 332,
+   "top1": 0.5692771084337349,
+   "macro_f1": 0.473084818203943
+  },
+  {
+   "model": "E1 Video only",
+   "factor": "camera view",
+   "group": "side-on",
+   "clips": 159,
+   "top1": 0.5345911949685535,
+   "macro_f1": 0.4239357503206224
+  },
+  {
+   "model": "E1 Video only",
+   "factor": "sharpness",
+   "group": "sharp",
+   "clips": 996,
+   "top1": 0.5602409638554217,
+   "macro_f1": 0.5506477936549438
+  },
+  {
+   "model": "E1 Video only",
+   "factor": "sharpness",
+   "group": "soft (sharpness < 90)",
+   "clips": 293,
+   "top1": 0.5665529010238908,
+   "macro_f1": 0.5475750447004692
+  },
+  {
+   "model": "E2 Pose only (2D)",
+   "factor": "camera view",
+   "group": "angled",
+   "clips": 797,
+   "top1": 0.506900878293601,
+   "macro_f1": 0.4745161854657553
+  },
+  {
+   "model": "E2 Pose only (2D)",
+   "factor": "camera view",
+   "group": "front-on",
+   "clips": 332,
+   "top1": 0.49096385542168675,
+   "macro_f1": 0.34018828107906524
+  },
+  {
+   "model": "E2 Pose only (2D)",
+   "factor": "camera view",
+   "group": "side-on",
+   "clips": 159,
+   "top1": 0.4528301886792453,
+   "macro_f1": 0.34863968695573855
+  },
+  {
+   "model": "E2 Pose only (2D)",
+   "factor": "sharpness",
+   "group": "sharp",
+   "clips": 996,
+   "top1": 0.48293172690763053,
+   "macro_f1": 0.4566324426415917
+  },
+  {
+   "model": "E2 Pose only (2D)",
+   "factor": "sharpness",
+   "group": "soft (sharpness < 90)",
+   "clips": 293,
+   "top1": 0.5392491467576792,
+   "macro_f1": 0.5060845497443982
+  },
+  {
+   "model": "E3 Video + pose (2D)",
+   "factor": "camera view",
+   "group": "angled",
+   "clips": 797,
+   "top1": 0.6373902132998746,
+   "macro_f1": 0.6068134069372116
+  },
+  {
+   "model": "E3 Video + pose (2D)",
+   "factor": "camera view",
+   "group": "front-on",
+   "clips": 332,
+   "top1": 0.6686746987951807,
+   "macro_f1": 0.5762798188741989
+  },
+  {
+   "model": "E3 Video + pose (2D)",
+   "factor": "camera view",
+   "group": "side-on",
+   "clips": 159,
+   "top1": 0.5849056603773585,
+   "macro_f1": 0.44033845000055927
+  },
+  {
+   "model": "E3 Video + pose (2D)",
+   "factor": "sharpness",
+   "group": "sharp",
+   "clips": 996,
+   "top1": 0.6275100401606426,
+   "macro_f1": 0.6124143817859583
+  },
+  {
+   "model": "E3 Video + pose (2D)",
+   "factor": "sharpness",
+   "group": "soft (sharpness < 90)",
+   "clips": 293,
+   "top1": 0.6791808873720137,
+   "macro_f1": 0.6490945923520215
+  },
+  {
+   "model": "E9a Pose only (3D)",
+   "factor": "camera view",
+   "group": "angled",
+   "clips": 797,
+   "top1": 0.5081555834378921,
+   "macro_f1": 0.46988142819378165
+  },
+  {
+   "model": "E9a Pose only (3D)",
+   "factor": "camera view",
+   "group": "front-on",
+   "clips": 332,
+   "top1": 0.4608433734939759,
+   "macro_f1": 0.305569846235307
+  },
+  {
+   "model": "E9a Pose only (3D)",
+   "factor": "camera view",
+   "group": "side-on",
+   "clips": 159,
+   "top1": 0.4779874213836478,
+   "macro_f1": 0.3618917445157855
+  },
+  {
+   "model": "E9a Pose only (3D)",
+   "factor": "sharpness",
+   "group": "sharp",
+   "clips": 996,
+   "top1": 0.48092369477911645,
+   "macro_f1": 0.45277444255714927
+  },
+  {
+   "model": "E9a Pose only (3D)",
+   "factor": "sharpness",
+   "group": "soft (sharpness < 90)",
+   "clips": 293,
+   "top1": 0.5290102389078498,
+   "macro_f1": 0.5030250671516983
+  },
+  {
+   "model": "E9b Video + pose (3D)",
+   "factor": "camera view",
+   "group": "angled",
+   "clips": 797,
+   "top1": 0.6336260978670013,
+   "macro_f1": 0.6005181032813943
+  },
+  {
+   "model": "E9b Video + pose (3D)",
+   "factor": "camera view",
+   "group": "front-on",
+   "clips": 332,
+   "top1": 0.6385542168674698,
+   "macro_f1": 0.48715968948609006
+  },
+  {
+   "model": "E9b Video + pose (3D)",
+   "factor": "camera view",
+   "group": "side-on",
+   "clips": 159,
+   "top1": 0.559748427672956,
+   "macro_f1": 0.41678457152727266
+  },
+  {
+   "model": "E9b Video + pose (3D)",
+   "factor": "sharpness",
+   "group": "sharp",
+   "clips": 996,
+   "top1": 0.6154618473895582,
+   "macro_f1": 0.5969427685425671
+  },
+  {
+   "model": "E9b Video + pose (3D)",
+   "factor": "sharpness",
+   "group": "soft (sharpness < 90)",
+   "clips": 293,
+   "top1": 0.658703071672355,
+   "macro_f1": 0.6298687671527683
+  }
+ ],
+ "significance": [
+  {
+   "comparison": "E3 Video + pose (2D) vs E1 Video only",
+   "only_first_right": 95,
+   "only_second_right": 195,
+   "p_value": 4.339046887836155e-09,
+   "significant_at_0.05": 1.0
+  },
+  {
+   "comparison": "E9b Video + pose (3D) vs E1 Video only",
+   "only_first_right": 109,
+   "only_second_right": 191,
+   "p_value": 2.54626341997208e-06,
+   "significant_at_0.05": 1.0
+  },
+  {
+   "comparison": "E9b Video + pose (3D) vs E3 Video + pose (2D)",
+   "only_first_right": 122,
+   "only_second_right": 104,
+   "p_value": 0.25808148000665193,
+   "significant_at_0.05": 0.0
+  },
+  {
+   "comparison": "E9a Pose only (3D) vs E2 Pose only (2D)",
+   "only_first_right": 129,
+   "only_second_right": 124,
+   "p_value": 0.8015050364897321,
+   "significant_at_0.05": 0.0
+  }
+ ]
+}

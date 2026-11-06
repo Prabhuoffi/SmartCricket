@@ -48,6 +48,7 @@
       </div>
     </section>
   </div>
+  <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
   <script>
     const nextPage = safeNext(new URLSearchParams(location.search).get("next"));
@@ -96,6 +97,8 @@
       if (mode === "register" && !name) return ($("error").innerHTML = alertHtml("error", "Please enter your name."));
       if (!/^\S+@\S+\.\S+$/.test(email)) return ($("error").innerHTML = alertHtml("error", "Please enter a valid email address."));
       if (password.length < 8) return ($("error").innerHTML = alertHtml("error", "Password needs at least 8 characters."));
+      if (mode === "register" && new TextEncoder().encode(password).length > 72)
+        return ($("error").innerHTML = alertHtml("error", "Use a password of at most 72 bytes (72 English letters, or fewer for other scripts)."));
       const btn = $("submit");
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner"></span> Please wait';
@@ -106,7 +109,9 @@
           body: JSON.stringify(mode === "register" ? { name, email, password } : { email, password }),
         });
         const j = await res.json();
-        if (!res.ok) throw new Error(typeof j.detail === "string" ? j.detail : "Please use a real email address and a password of at least 8 characters.");
+        if (!res.ok) throw new Error(typeof j.detail === "string" ? j.detail : Array.isArray(j.detail)
+          ? j.detail.map(e => `${e.loc?.at(-1) || "Input"}: ${e.msg}`).join(". ")
+          : "Please use a real email address and a password of at least 8 characters.");
         saveSession(j.token, j.name, j.role);
         btn.innerHTML = `${icon("check")} Welcome, ${esc(j.name.split(" ")[0])}`;
         go(afterLogin());

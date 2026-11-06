@@ -185,3 +185,38 @@ class LiveSession(Base):
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
     stats: Mapped[dict | None] = mapped_column(JsonType, nullable=True)   # best angle, ghost match, stroke match
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class PracticeGoal(Base):
+    """One player-selected measurement goal, with a baseline and optional retest."""
+    __tablename__ = "practice_goals"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(120))
+    notes: Mapped[str] = mapped_column(Text, default="")
+    focus_joint: Mapped[str] = mapped_column(String(30))
+    target_deg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="active")
+    baseline_id: Mapped[int | None] = mapped_column(ForeignKey("analyses.id", ondelete="SET NULL"), nullable=True)
+    retest_id: Mapped[int | None] = mapped_column(ForeignKey("analyses.id", ondelete="SET NULL"), nullable=True)
+    baseline_frame: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    retest_frame: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    same_setup: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+    baseline: Mapped[Analysis | None] = relationship(foreign_keys=[baseline_id])
+    retest: Mapped[Analysis | None] = relationship(foreign_keys=[retest_id])
+
+
+class PlayerProfile(Base):
+    """Player-stated preferences for repeatable captures, separate from measurements."""
+    __tablename__ = "player_profiles"
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    handedness: Mapped[str] = mapped_column(String(20), default="unspecified")
+    experience: Mapped[str] = mapped_column(String(20), default="unspecified")
+    camera_view: Mapped[str] = mapped_column(String(20), default="side-on")
+    focus: Mapped[str] = mapped_column(String(120), default="")
+    notes: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)

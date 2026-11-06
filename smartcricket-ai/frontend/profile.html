@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Batting profile</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+  <link rel="stylesheet" href="css/profile.css?v=1">
+</head>
+<body>
+  <div class="layout">
+    <main class="profile-page">
+      <div class="page-head">
+        <div class="reveal"><h1>Batting profile</h1><p class="muted">Save your preferences and a repeatable capture setup for your next baseline or retest.</p></div>
+        <a class="btn ghost" href="practice.html">Open practice goals</a>
+      </div>
+      <div class="card" id="profile-loading" role="status" aria-live="polite">Loading your capture preferences…</div>
+      <div id="profile-workspace" hidden>
+        <section class="profile-intro" aria-label="How your profile is used">
+          <span class="profile-intro-icon" aria-hidden="true">01</span>
+          <div><b>Your choices, a consistent setup</b><p class="muted small">Your profile records what you tell us. It does not infer a front leg, recommend an ideal joint angle, or change model accuracy.</p></div>
+        </section>
+        <div class="profile-grid">
+          <section class="card profile-section reveal" aria-labelledby="profile-heading">
+            <div class="card-head"><div><span class="eyebrow-s">Your preferences</span><h2 id="profile-heading">Personal capture profile</h2></div><span class="chip info" id="profile-state">Not saved</span></div>
+            <form id="profile-form">
+              <div class="profile-fields">
+                <label>Batting handedness<select id="profile-handedness" name="handedness" aria-describedby="handedness-help"><option value="unspecified">Prefer not to state</option><option value="right">Right-handed</option><option value="left">Left-handed</option></select><small id="handedness-help">A stated preference; it does not identify a front leg in an image.</small></label>
+                <label>Experience<select id="profile-experience" name="experience"><option value="unspecified">Not stated</option><option value="beginner">Beginner</option><option value="regular">Regular player</option><option value="experienced">Experienced player</option></select><small>Self-described, without a skill score.</small></label>
+                <label class="profile-wide">Usual camera view<select id="profile-camera" name="camera_view"><option value="side-on">Side-on</option><option value="front-on">Front-on</option><option value="angled">Angled</option></select><small>Choose the view you can repeat for baseline and retest captures.</small></label>
+                <label class="profile-wide">Personal practice focus <span class="muted small">(optional)</span><input class="plain" id="profile-focus" name="focus" maxlength="120" placeholder="e.g. Repeat the same drive finish"></label>
+                <label class="profile-wide">Capture notes <span class="muted small">(optional)</span><textarea class="plain" id="profile-notes" name="notes" maxlength="1000" rows="4" placeholder="e.g. Tripod beside the net marker, same camera height and zoom"></textarea><small>Record a setup you can repeat. Keep private details out of capture notes.</small></label>
+              </div>
+              <div class="profile-actions"><button type="submit" id="profile-save">Save preferences</button><button type="button" class="ghost" id="profile-reset">Undo unsaved edits</button></div>
+              <div id="profile-message" role="status" aria-live="polite"></div>
+              <p class="muted small" id="profile-saved-at">Defaults shown. Save your choices when ready.</p>
+            </form>
+          </section>
+          <section class="card profile-section reveal" aria-labelledby="checklist-heading">
+            <div class="card-head"><div><span class="eyebrow-s">Repeatable capture</span><h2 id="checklist-heading">Before your next capture</h2></div></div>
+            <p class="muted small" id="profile-checklist-view">Checklist for your selected camera view.</p>
+            <ol class="profile-checklist" id="profile-checklist"></ol>
+            <p class="profile-interpretation" id="profile-interpretation"></p>
+            <div class="profile-next"><a class="btn" href="image.html">Capture a photo</a><a class="btn ghost" href="video.html">Capture a clip</a><a class="profile-training-link" href="training.html">Continue to training →</a></div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/dropdown.js?v=1"></script>
+  <script src="js/api.js?v=48"></script>
+  <script src="js/profile.js?v=1"></script>
+</body>
+</html>

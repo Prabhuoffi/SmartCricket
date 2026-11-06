@@ -76,6 +76,7 @@
       <div class="card reveal" id="three-d" style="margin-top:18px" hidden></div>
     </main>
   </div>
+  <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
   <script src="js/coach.js?v=48"></script>
   <script>
@@ -109,6 +110,7 @@
 
       if (!s.detected) $("banner").innerHTML = alertHtml("warn", "No person was detected in this photo. Try one where the whole batter is clearly in view.");
       else if (s.visible < 20) $("banner").innerHTML = alertHtml("warn", `Only ${s.visible} of ${s.total} body points were clearly visible, so some joints could not be measured.`);
+      else $("banner").innerHTML = alertHtml("info", "A photo gives your posture and joint angles. To get the shot name (cover drive, pull, sweep…), upload a short video of the shot in Video analysis.");
 
       [urls.original, urls.output] = await Promise.all([blobUrl(A.files.original), blobUrl(A.files.output)]);
       if (!s.landmarks) { // analyses made before the live overlay existed

@@ -10,13 +10,43 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-CLASSES = ["Cover Drive", "Defensive", "Down The Wicket", "Flick", "Hook", "Late Cut", "Lofted Legside",
-           "Lofted Offside", "Pull", "Reverse Sweep", "Scoop", "Square Cut", "Straight Drive", "Sweep", "Upper Cut"]
+BASE_CLASSES = ["Cover Drive", "Defensive", "Down The Wicket", "Flick", "Hook", "Late Cut", "Lofted Legside",
+                "Lofted Offside", "Pull", "Reverse Sweep", "Scoop", "Square Cut", "Straight Drive", "Sweep", "Upper Cut"]
+# Shots not in CricShot10k. They are trained only once enough clips of them are added (see the notebook's
+# extra_shots folder); a model's checkpoint lists the classes it was actually trained on.
+NEW_SHOTS = ["Slog Sweep", "Paddle Sweep", "Switch Hit", "Leg Glance", "Leave"]
+CLASSES = BASE_CLASSES + NEW_SHOTS
+# Cricket shot families: shots of the same family share the batting movement, so the family is a coarser,
+# more reliable label shown next to the exact shot (10 families for the 15 CricShot10k shots).
+# Shots not listed are their own family.
+FAMILIES = {"Cover Drive": "Drive", "Straight Drive": "Drive", "Slog Sweep": "Sweep", "Paddle Sweep": "Sweep",
+            "Square Cut": "Cut", "Late Cut": "Cut", "Upper Cut": "Cut",
+            "Lofted Legside": "Lofted", "Lofted Offside": "Lofted",
+            "Pull": "Pull / Hook", "Hook": "Pull / Hook"}
+
+
+def family_of(shot: str) -> str:
+    return FAMILIES.get(shot, shot)
+
+
+def family_probs(probs, classes=CLASSES) -> list[dict]:
+    """Sum the class probabilities within each family, highest first."""
+    totals: dict[str, float] = {}
+    for c, p in zip(classes, probs):
+        totals[family_of(c)] = totals.get(family_of(c), 0.0) + float(p)
+    return [{"family": f, "prob": round(p, 4)} for f, p in sorted(totals.items(), key=lambda kv: -kv[1])]
+
+
 NUM_FRAMES = 15
 SIZE = 224
 MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-FEAT_DIM = 1280          # EfficientNetV2-S pooled feature size
+# Frozen image backbones -> pooled feature size. Each checkpoint records which one it was trained with.
+BACKBONES = {"efficientnet_v2_s/IMAGENET1K_V1": 1280,          # first models (E1 to E9, report v1)
+             "regnet_y_16gf/IMAGENET1K_SWAG_LINEAR_V1": 3024}  # stronger: pretrained on 3.6B images, made for frozen use
+BACKBONE = "regnet_y_16gf/IMAGENET1K_SWAG_LINEAR_V1"            # used for new training runs
+LEGACY_BACKBONE = "efficientnet_v2_s/IMAGENET1K_V1"             # checkpoints without a 'backbone' entry
+FEAT_DIM = BACKBONES[BACKBONE]
 POSE_DIM = 43            # 8 angles + 17 landmarks (x, y) + 1 valid flag
 POSE3D_DIM = 60          # 8 angles measured in 3D + 17 world landmarks (x, y, z) + 1 valid flag
 MIN_VIS = 0.5
@@ -49,6 +79,36 @@ def to_tensor(frames: list[np.ndarray], flip: bool = False) -> torch.Tensor:
             f = f[:, ::-1]
         out.append((f.astype(np.float32) / 255.0 - MEAN) / STD)
     return torch.from_numpy(np.stack(out)).permute(0, 3, 1, 2).contiguous()
+
+
+def batter_box(lm: np.ndarray, w: int, h: int, margin: float = 0.3, min_frames: int = 3):
+    """One square box around the batter for the whole clip, from the pose landmarks (n, 33, 3) in pixels.
+
+    Uses frames where at least 8 points are clearly visible; the 10th/90th percentiles of the body edges ignore a
+    stray detection, and the margin leaves room for the bat. None (use the full frame) when the body is not found
+    in enough frames. The box is fixed, so the movement between frames is kept."""
+    boxes = []
+    for f in lm:
+        v = f[:, 2] >= MIN_VIS
+        if v.sum() >= 8:
+            boxes.append((f[v, 0].min(), f[v, 1].min(), f[v, 0].max(), f[v, 1].max()))
+    if len(boxes) < min_frames:
+        return None
+    b = np.array(boxes)
+    x1, y1 = np.percentile(b[:, 0], 10), np.percentile(b[:, 1], 10)
+    x2, y2 = np.percentile(b[:, 2], 90), np.percentile(b[:, 3], 90)
+    side = max(x2 - x1, y2 - y1) * (1 + 2 * margin)
+    side = min(max(side, 0.25 * min(w, h)), min(w, h))   # not tiny, and never larger than the frame
+    cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+    x0 = int(np.clip(cx - side / 2, 0, w - side)); y0 = int(np.clip(cy - side / 2, 0, h - side))
+    return x0, y0, x0 + int(side), y0 + int(side)
+
+
+def crop_frames(frames: list[np.ndarray], box) -> list[np.ndarray]:
+    if box is None:
+        return frames
+    x1, y1, x2, y2 = box
+    return [f[y1:y2, x1:x2] for f in frames]
 
 
 # ---------------------------------------------------------------- pose features
@@ -188,7 +248,7 @@ class Attention(nn.Module):
 class VideoHead(nn.Module):
     """E1: per-frame EfficientNetV2-S features -> GRU(128) -> attention -> classes."""
 
-    def __init__(self, n_classes=len(CLASSES), hidden=128, in_dim=FEAT_DIM, dropout=0.3):
+    def __init__(self, n_classes=len(BASE_CLASSES), hidden=128, in_dim=FEAT_DIM, dropout=0.3):
         super().__init__()
         self.drop_in = nn.Dropout(0.2)
         self.gru = nn.GRU(in_dim, hidden, batch_first=True)
@@ -208,7 +268,7 @@ class VideoHead(nn.Module):
 class PoseNet(nn.Module):
     """E2: per-frame pose features -> GRU(64) -> attention -> classes."""
 
-    def __init__(self, n_classes=len(CLASSES), hidden=64, in_dim=POSE_DIM, dropout=0.3):
+    def __init__(self, n_classes=len(BASE_CLASSES), hidden=64, in_dim=POSE_DIM, dropout=0.3):
         super().__init__()
         self.gru = nn.GRU(in_dim, hidden, batch_first=True)
         self.att = Attention(hidden)
@@ -227,9 +287,9 @@ class PoseNet(nn.Module):
 class FusionNet(nn.Module):
     """E3: late fusion of the video and pose summaries -> MLP (192 -> 128 -> classes)."""
 
-    def __init__(self, n_classes=len(CLASSES), pose_dim=POSE_DIM):
+    def __init__(self, n_classes=len(BASE_CLASSES), pose_dim=POSE_DIM, feat_dim=FEAT_DIM):
         super().__init__()
-        self.video = VideoHead(n_classes)
+        self.video = VideoHead(n_classes, in_dim=feat_dim)
         self.pose = PoseNet(n_classes, in_dim=pose_dim)
         self.head = nn.Sequential(nn.Linear(self.video.out_dim + self.pose.out_dim, 128), nn.ReLU(),
                                   nn.Dropout(0.3), nn.Linear(128, n_classes))
@@ -240,23 +300,70 @@ class FusionNet(nn.Module):
         return self.head(torch.cat([cv, cp], 1)), av
 
 
-def build_model(kind: str) -> nn.Module:
-    """video, pose and fusion (E1 to E3); pose3d and fusion3d use 3D pose features (E9)."""
-    return {"video": VideoHead, "pose": PoseNet, "fusion": FusionNet,
-            "pose3d": lambda: PoseNet(in_dim=POSE3D_DIM), "fusion3d": lambda: FusionNet(pose_dim=POSE3D_DIM)}[kind]()
+def build_model(kind: str, feat_dim: int = FEAT_DIM, n_classes: int = len(BASE_CLASSES)) -> nn.Module:
+    """video, pose and fusion (E1 to E3); pose3d and fusion3d use 3D pose features (E9).
+    feat_dim is the backbone's feature size (see BACKBONES); n_classes the number of shots trained."""
+    n = n_classes
+    return {"video": lambda: VideoHead(n, in_dim=feat_dim), "pose": lambda: PoseNet(n),
+            "fusion": lambda: FusionNet(n, feat_dim=feat_dim),
+            "pose3d": lambda: PoseNet(n, in_dim=POSE3D_DIM),
+            "fusion3d": lambda: FusionNet(n, pose_dim=POSE3D_DIM, feat_dim=feat_dim)}[kind]()
 
 
 def uses_3d(kind: str) -> bool:
     return kind.endswith("3d")
 
 
-def build_backbone():
-    """EfficientNetV2-S without its classifier: image -> 1280-d vector. Returns (model, last_conv_block)."""
-    from torchvision.models import EfficientNet_V2_S_Weights, efficientnet_v2_s
-    net = efficientnet_v2_s(weights=EfficientNet_V2_S_Weights.IMAGENET1K_V1)
-    net.classifier = nn.Identity()
+FT_SUFFIX = "+ft"            # backbone name suffix: last blocks fine-tuned on cricket frames (weights in FT_FILE)
+FT_FILE = "backbone_ft.pt"
+
+
+def feat_dim_of(name: str) -> int:
+    return BACKBONES[name.split("+")[0]]
+
+
+def build_backbone(name: str = BACKBONE, ft_weights=None):
+    """Backbone without its classifier: image -> feat_dim_of(name)-d vector. Returns (model, last_conv_block).
+    A name ending in FT_SUFFIX needs ft_weights (path to FT_FILE), the fine-tuned state dict."""
+    import torchvision.models as tvm
+    base = name.split("+")[0]
+    if name.endswith(FT_SUFFIX):
+        net, last = build_backbone(base)
+        if ft_weights is None:
+            raise FileNotFoundError(f"{name} needs its fine-tuned weights ({FT_FILE})")
+        state = torch.load(ft_weights, map_location="cpu")
+        net.load_state_dict({k: v.float() for k, v in state.items()})
+        return net.eval(), last
+    name = base
+    if name.startswith("efficientnet_v2_s"):
+        net = tvm.efficientnet_v2_s(weights=tvm.EfficientNet_V2_S_Weights.IMAGENET1K_V1)
+        net.classifier = nn.Identity()
+        last = net.features[-1]
+    elif name.startswith("regnet_y_16gf"):
+        net = tvm.regnet_y_16gf(weights=tvm.RegNet_Y_16GF_Weights.IMAGENET1K_SWAG_LINEAR_V1)
+        net.fc = nn.Identity()
+        last = net.trunk_output
+    else:
+        raise ValueError(f"Unknown backbone: {name}")
     net.eval()
-    return net, net.features[-1]
+    return net, last
+
+
+def unfreeze_last_blocks(net: nn.Module, name: str = BACKBONE) -> list:
+    """For fine-tuning: freeze the backbone except its last two stages; returns the trainable parameters.
+    BatchNorm statistics stay frozen (call net.eval() while training), which is stable with small batches."""
+    for q in net.parameters():
+        q.requires_grad = False
+    if name.startswith("regnet_y_16gf"):
+        last = [net.trunk_output.block3, net.trunk_output.block4]
+    elif name.startswith("efficientnet_v2_s"):
+        last = [net.features[-2], net.features[-1]]
+    else:
+        raise ValueError(f"Unknown backbone: {name}")
+    params = [q for m in last for q in m.parameters()]
+    for q in params:
+        q.requires_grad = True
+    return params
 
 
 class TemperatureScaler(nn.Module):

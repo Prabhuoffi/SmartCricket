@@ -99,7 +99,10 @@ def mark_drill(drill_id: int, body: Done, user: User = Depends(current_user), db
         raise HTTPException(404, "Drill not found")
     if d.day != trainer.today():
         raise HTTPException(409, "Only today's drills can be changed")
-    before = trainer.status(trainer.load(user, db))["level"]
+    c = trainer.load(user, db)
+    if body.done and d.code != "rest" and trainer.needs_rest(c, c.day):
+        raise HTTPException(409, "Today is a rest day. Complete your recovery plan instead.")
+    before = trainer.status(c)["level"]
     d.done, d.done_at = body.done, datetime.now(timezone.utc) if body.done else None
     db.commit()
     st = trainer.status(trainer.load(user, db))
@@ -129,14 +132,21 @@ def answer_quiz(body: Choice, user: User = Depends(current_user), db: Session = 
 def save_live(body: LiveIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
     """Save the summary of a live-mirror session. Only numbers are stored, never camera images."""
     c = trainer.load(user, db)
+    d = None
     if body.drill_id is not None:
         d = db.get(PlanDrill, body.drill_id)
         if not d or d.user_id != user.id:
             raise HTTPException(404, "Drill not found")
+        if d.day != c.day:
+            raise HTTPException(409, "Only today's drills can be saved as a live session")
+        if body.completed and d.code != "rest" and trainer.needs_rest(c, c.day):
+            raise HTTPException(409, "Today is a rest day. Complete your recovery plan instead.")
     before = trainer.status(c)["level"]
     stats = {k: v for k, v in (body.stats or {}).items() if isinstance(v, (int, float, str, bool)) or v is None}
     row = LiveSession(user_id=user.id, day=c.day, drill_id=body.drill_id, title=body.title.strip(), duration_s=body.duration_s,
                       reps=body.reps, hold_s=body.hold_s, completed=body.completed, stats=stats)
+    if d is not None and body.completed and not d.done:
+        d.done, d.done_at = True, datetime.now(timezone.utc)
     db.add(row)
     db.commit()
     c.live.append(row)

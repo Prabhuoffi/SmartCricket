@@ -1,5 +1,5 @@
 """Adaptive coaching (module M8): streaks, levels, XP, daily plan, check-in, quiz and weekly report."""
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -17,6 +17,21 @@ def test_streaks():
     assert trainer.streaks(days, t) == (3, 4)
     assert trainer.streaks({t - timedelta(days=1)}, t) == (1, 1)  # still alive until the end of today
     assert trainer.streaks({t - timedelta(days=2)}, t) == (0, 1)
+
+
+def test_sqlite_naive_utc_is_counted_on_the_correct_local_day(monkeypatch):
+    import time
+    if not hasattr(time, "tzset"):
+        pytest.skip("tzset is needed to verify the local midnight boundary")
+    try:
+        with monkeypatch.context() as patch:
+            patch.setenv("TZ", "Asia/Kolkata")
+            time.tzset()
+            utc_time = datetime(2026, 11, 3, 20, 30)
+            assert trainer.local_day(utc_time) == date(2026, 11, 4)
+            assert trainer.local_day(utc_time) == trainer.local_day(utc_time.replace(tzinfo=timezone.utc))
+    finally:
+        time.tzset()
 
 
 def test_levels():
@@ -43,6 +58,7 @@ def test_template_summary_uses_only_given_numbers():
          "sore_days": 0, "knee_avg_deg": 150.2, "knee_change_deg": -6.5}
     text = trainer.template_summary(s)
     assert "5 of 7 days" in text and "12 of 15" in text and "6.5° deeper" in text and "step up" in text
+    assert "more-bent knee" in text and "similar poses and camera views" in text and "front-knee" not in text
 
 
 def test_quiz_bank_is_well_formed():
@@ -126,3 +142,74 @@ def test_clip_measurements_for_drills():
     assert m["elbow"] == 120.0         # at the frame of most movement, not the backlift minimum
     assert m["shoulder"] == 30.0       # highest arm position
     assert trainer.measurements(NS(mode="video", summary={"joint_ranges": r, "tracked_frames": 3})) is None
+
+
+def test_rest_checkin_overrides_started_plan_and_preserves_history(client):
+    h = register(client, "recovery@example.com")
+    original = client.get("/api/train/today", headers=h).json()["plan"]
+    first, remaining = original[0]["id"], original[1]["id"]
+    assert client.post(f"/api/train/drills/{first}", headers=h, json={"done": True}).status_code == 200
+
+    payload = client.post("/api/train/checkin", headers=h, json={"soreness": "stop"}).json()
+    assert payload["rest_day"] and [d["code"] for d in payload["plan"]] == ["rest"]
+    assert payload["status"]["today"]["rest_day"]
+    assert payload["status"]["today"]["drills_total"] == 1
+    assert payload["status"]["xp"]["parts"]["drill"] == 15
+    assert client.get("/api/train/today", headers=h).json()["rest_day"]
+    assert client.post(f"/api/train/drills/{remaining}", headers=h, json={"done": True}).status_code == 409
+    assert client.post("/api/train/live-sessions", headers=h,
+                       json={"drill_id": remaining, "title": "Active drill", "duration_s": 30,
+                             "completed": True}).status_code == 409
+
+    recovery = payload["plan"][0]["id"]
+    result = client.post(f"/api/train/drills/{recovery}", headers=h, json={"done": True}).json()
+    assert result["status"]["today"]["drills_done"] == 1
+    week = client.get("/api/train/progress", headers=h).json()["weeks"][-1]
+    assert week["completion_pct"] == 100 and week["drills_planned"] == 1
+    from sqlalchemy import select
+    from backend.app.db import SessionLocal
+    from backend.app.models import User
+    with SessionLocal() as db:
+        player = db.scalar(select(User).where(User.email == "recovery@example.com"))
+        assert trainer.snapshot(player, db)["plan_pct"] == 100
+
+    # Correcting the check-in restores the original work and keeps its completion.
+    corrected = client.post("/api/train/checkin", headers=h, json={"soreness": "none"}).json()
+    assert not corrected["rest_day"] and not corrected["status"]["today"]["rest_day"]
+    assert [d["id"] for d in corrected["plan"]] == [d["id"] for d in original]
+    assert corrected["plan"][0]["done"]
+    assert corrected["status"]["xp"]["parts"]["drill"] == 30
+
+
+def test_live_completion_is_atomic_and_old_drills_are_rejected(client):
+    from backend.app.db import SessionLocal
+    from backend.app.models import PlanDrill
+
+    h = register(client, "live-completion@example.com")
+    drill = client.get("/api/train/today", headers=h).json()["plan"][0]
+    body = {"drill_id": drill["id"], "title": drill["title"], "duration_s": 30, "reps": 10, "completed": True}
+    saved = client.post("/api/train/live-sessions", headers=h, json=body)
+    assert saved.status_code == 201
+    assert saved.json()["status"]["today"]["drills_done"] == 1
+    assert client.get("/api/train/today", headers=h).json()["plan"][0]["done"]
+    again = client.post("/api/train/live-sessions", headers=h, json=body).json()
+    assert again["status"]["xp"]["parts"]["drill"] == 15
+    with SessionLocal() as db:
+        db.get(PlanDrill, drill["id"]).day = trainer.today() - timedelta(days=1)
+        db.commit()
+    assert client.post("/api/train/live-sessions", headers=h, json=body).status_code == 409
+
+
+def test_replanning_preserves_saved_live_session(client):
+    from backend.app.db import SessionLocal
+    from backend.app.models import LiveSession
+
+    h = register(client, "live-replan@example.com")
+    drill = client.get("/api/train/today", headers=h).json()["plan"][0]
+    response = client.post("/api/train/live-sessions", headers=h,
+                           json={"drill_id": drill["id"], "title": drill["title"], "duration_s": 30})
+    assert response.status_code == 201
+    assert client.post("/api/train/checkin", headers=h, json={"soreness": "mild"}).status_code == 200
+    with SessionLocal() as db:
+        saved = db.get(LiveSession, response.json()["id"])
+        assert saved is not None and saved.drill_id is None and saved.duration_s == 30

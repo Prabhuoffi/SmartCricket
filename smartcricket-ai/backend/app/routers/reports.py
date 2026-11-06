@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from ..auth import current_user
 from ..db import get_db
 from ..models import Analysis, Media, User
+from ..serialize import timestamp
 from ..video import overlay_kind
 from ..pose import ANGLES
 from .analyses import owned_analysis
@@ -31,7 +32,7 @@ def history_csv(user: User = Depends(current_user), db: Session = Depends(get_db
                 *[f"{n}_deg" for n in ANGLES], "latency_ms"])
     for a in rows:
         ang = a.angles or {}
-        w.writerow([a.id, a.created_at.isoformat(timespec="seconds"), a.mode, a.media.original_name,
+        w.writerow([a.id, timestamp(a.created_at), a.mode, a.media.original_name,
                     a.media.session_label or "", a.shot or "", a.confidence if a.confidence is not None else "",
                     a.uncertain, (a.summary or {}).get("visible", ""),
                     *[(ang.get(n) or {}).get("deg") if (ang.get(n) or {}).get("deg") is not None else "" for n in ANGLES],

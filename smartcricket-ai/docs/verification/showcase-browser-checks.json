@@ -1,0 +1,61 @@
+{
+  "context": "Isolated static frontend, fictional localStorage session only; no backend or real user data.",
+  "external_fonts_blocked": true,
+  "desktop": {
+    "viewport": 1440,
+    "client": 1440,
+    "scroll": 1440
+  },
+  "mobile": {
+    "viewport": 390,
+    "client": 390,
+    "scroll": 390
+  },
+  "scenarios": [
+    {
+      "id": "matched-setup",
+      "title": "Same setup, closer to a personal number",
+      "rows": 8,
+      "state": "Setup checks clear",
+      "excluded": 0,
+      "kpis": "Shared joints8 / 8Usable fictional measurements in both capturesPractice adherence87.2%34 of 39 fictional planned drillsRest days1No drills included in the activity denominatorRetest target distance1.0°Baseline distance: 8.0°"
+    },
+    {
+      "id": "farther-target",
+      "title": "Same setup, farther from a personal number",
+      "rows": 8,
+      "state": "Setup checks clear",
+      "excluded": 0,
+      "kpis": "Shared joints8 / 8Usable fictional measurements in both capturesPractice adherence79.5%31 of 39 fictional planned drillsRest days1No drills included in the activity denominatorRetest target distance15.0°Baseline distance: 8.0°"
+    },
+    {
+      "id": "capture-mismatch",
+      "title": "Camera and movement phase mismatch",
+      "rows": 8,
+      "state": "Exploratory comparison",
+      "excluded": 0,
+      "kpis": "Shared joints8 / 8Usable fictional measurements in both capturesPractice adherence51.3%20 of 39 fictional planned drillsRest days1No drills included in the activity denominatorRetest target distance1.0°Baseline distance: 8.0°"
+    },
+    {
+      "id": "low-visibility",
+      "title": "Low visibility and missing measurements",
+      "rows": 2,
+      "state": "Exploratory comparison",
+      "excluded": 6,
+      "kpis": "Shared joints2 / 8Usable fictional measurements in both capturesPractice adherence79.5%31 of 39 fictional planned drillsRest days1No drills included in the activity denominatorRetest target distance—No usable focus joint or no personal target"
+    },
+    {
+      "id": "recovery",
+      "title": "Recovery days and honest activity totals",
+      "rows": 8,
+      "state": "Setup checks clear",
+      "excluded": 0,
+      "kpis": "Shared joints8 / 8Usable fictional measurements in both capturesPractice adherence81.5%22 of 27 fictional planned drillsRest days5No drills included in the activity denominatorRetest target distance—No usable focus joint or no personal target"
+    }
+  ],
+  "json_export": true,
+  "csv_export": true,
+  "print_provenance_visible": true,
+  "backend_api_requests": [],
+  "unexpected_script_exceptions": []
+}

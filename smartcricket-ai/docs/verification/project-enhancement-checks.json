@@ -1,0 +1,42 @@
+{
+  "date": "2026-11-05",
+  "timezone": "Asia/Kolkata",
+  "python_tests": {
+    "command": ".venv/bin/python -m pytest -q",
+    "passed": 157,
+    "warnings": 1,
+    "duration_seconds": 41.18
+  },
+  "javascript_tests": {
+    "command": "node --test tests/*.cjs",
+    "passed": 25
+  },
+  "document_checks": {
+    "editable_artifacts_reopened": true,
+    "slide_count": 31,
+    "synthetic_csv_records": 70,
+    "pdfs": [
+      {
+        "file": "SmartCricket_AI_Presentation_Guide_Updated.pdf",
+        "pages": 5,
+        "minimum_page_text_characters": 858,
+        "bytes": 139327
+      },
+      {
+        "file": "SmartCricket_AI_Project_Report_Updated.pdf",
+        "pages": 14,
+        "minimum_page_text_characters": 722,
+        "bytes": 672459
+      },
+      {
+        "file": "SmartCricket_AI_Project_Review_Updated.pdf",
+        "pages": 31,
+        "minimum_page_text_characters": 271,
+        "bytes": 3955380
+      }
+    ]
+  },
+  "model_training_rerun": false,
+  "stored_accuracy_changed": false,
+  "browser_evidence": "showcase-browser-checks.json"
+}

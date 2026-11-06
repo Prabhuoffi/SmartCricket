@@ -4,12 +4,12 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from ..auth import current_user
 from ..db import get_db
-from ..models import Analysis, Media, User
+from ..models import Analysis, Media, PracticeGoal, User
 from ..serialize import analysis_out
 
 router = APIRouter(prefix="/api", tags=["analyses"])
@@ -40,6 +40,12 @@ def delete_analysis(analysis_id: int, user: User = Depends(current_user), db: Se
     a = owned_analysis(analysis_id, user, db)
     media = a.media
     paths = [a.output_path, media.file_path]
+    # Preserve goal notes/history while detaching deleted evidence on SQLite too.
+    ids = [row.id for row in media.analyses]
+    db.execute(update(PracticeGoal).where(PracticeGoal.baseline_id.in_(ids))
+               .values(baseline_id=None, baseline_frame=None, same_setup=False))
+    db.execute(update(PracticeGoal).where(PracticeGoal.retest_id.in_(ids))
+               .values(retest_id=None, retest_frame=None, same_setup=False))
     db.delete(media)  # cascades to analyses and coach messages
     db.commit()
     for p in paths:

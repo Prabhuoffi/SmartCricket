@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Demo showcase</title>
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+  <link rel="stylesheet" href="css/style.css?v=48">
+  <link rel="stylesheet" href="css/showcase.css?v=1">
+</head>
+<body>
+  <div class="layout">
+    <main class="showcase-page">
+      <div class="page-head">
+        <div><h1>Demo showcase</h1><p class="muted">Explore practice goals, recording checks, and activity with fictional examples.</p></div>
+        <a class="btn ghost" href="practice.html">Open my real practice goals</a>
+      </div>
+      <section class="showcase-banner" aria-label="Synthetic demonstration data">
+        <span class="chip warn">Synthetic demo data</span>
+        <p><b>Every scenario player, measurement, goal, and activity below is fictional.</b> These examples demonstrate features. They do not measure model accuracy, real player progress, or improved batting technique. Your saved captures and account history are unchanged.</p>
+      </section>
+      <div id="showcase-status" class="card" role="status" aria-live="polite">Loading bundled demo scenarios…</div>
+      <div id="showcase-content" hidden>
+        <section class="card showcase-section" aria-labelledby="scenario-heading">
+          <div class="card-head"><div><span class="eyebrow-s">Presentation workspace</span><h2 id="scenario-heading">Choose a fictional scenario</h2></div><span class="chip info" id="scenario-count"></span></div>
+          <label class="showcase-selector">Scenario<select id="showcase-select" aria-label="Choose a fictional scenario" class="plain" data-dropdown-compact></select></label>
+          <div id="scenario-summary" aria-live="polite"></div>
+          <div class="showcase-actions"><button type="button" class="ghost" id="showcase-csv">Download synthetic CSV</button><button type="button" class="ghost" id="showcase-json">Download synthetic JSON</button><button type="button" class="ghost" id="showcase-print">Print demo report</button></div>
+          <p class="muted small">Exports contain only the selected fictional scenario and its synthetic-data label.</p>
+        </section>
+        <div id="showcase-kpis" class="showcase-kpis" aria-live="polite"></div>
+        <section class="card showcase-section" aria-labelledby="goal-heading">
+          <div class="card-head"><div><span class="eyebrow-s">Fictional personal goal</span><h2 id="goal-heading">Focus and capture setup</h2></div><span class="chip warn">Demo</span></div>
+          <div id="showcase-goal"></div>
+          <div id="showcase-captures" class="showcase-captures"></div>
+          <div id="showcase-checks" class="showcase-checks" aria-live="polite"></div>
+        </section>
+        <section class="card showcase-section" aria-labelledby="angles-heading">
+          <div class="card-head"><div><span class="eyebrow-s">Synthetic joint measurements</span><h2 id="angles-heading">Baseline and retest</h2></div><span class="chip" id="showcase-comparison-state"></span></div>
+          <p class="muted small">Change = retest minus baseline. Only finite angles from 0° to 180°, with visibility of at least 0.5 in both captures, receive a delta. On small screens, scroll the table sideways to see all columns.</p>
+          <div class="table-scroll" role="region" aria-label="Synthetic joint-angle comparison" tabindex="0">
+            <table class="data showcase-table"><thead><tr><th scope="col">Joint</th><th scope="col">Baseline</th><th scope="col">Retest</th><th scope="col">Signed change</th><th scope="col">Illustration of change</th></tr></thead><tbody id="showcase-angle-rows"></tbody></table>
+          </div>
+          <details id="showcase-exclusions" hidden><summary>Excluded fictional measurements</summary><ul id="showcase-excluded-list"></ul></details>
+          <p class="showcase-interpretation">A smaller target distance only means closer to a fictional personal number. Angle changes, matching setup checks, and activity completion do not establish better technique or prove that practice caused a change.</p>
+        </section>
+        <section class="card showcase-section" aria-labelledby="activity-heading">
+          <div class="card-head"><div><span class="eyebrow-s">14 fictional days</span><h2 id="activity-heading">Practice and recovery</h2></div><span class="chip warn">Synthetic activity</span></div>
+          <p class="muted small">Adherence = completed planned drills ÷ planned drills. Rest days have no planned drills and are excluded from this denominator. This is activity completion, not a skill score.</p>
+          <div id="showcase-activity" class="showcase-activity" aria-label="Fictional daily activity"></div>
+          <div class="table-scroll" role="region" aria-label="Synthetic daily practice and recovery" tabindex="0">
+            <table class="data showcase-session-table"><thead><tr><th scope="col">Fictional date</th><th scope="col">Check-in</th><th scope="col">Planned drills</th><th scope="col">Completed drills</th><th scope="col">Practice note</th></tr></thead><tbody id="showcase-session-rows"></tbody></table>
+          </div>
+        </section>
+        <p class="muted small showcase-print-label">Synthetic demonstration report • SmartCricket AI • No model evaluation or real player outcomes are represented.</p>
+      </div>
+    </main>
+  </div>
+  <script src="js/dropdown.js?v=1"></script>
+  <script src="js/api.js?v=48"></script>
+  <script src="js/showcase.js?v=1"></script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 """Administrator features (FR-18): reference clips, model results, user list."""
 import json
 import logging
+import math
 import shutil
 import uuid
 from collections import defaultdict
@@ -18,12 +19,17 @@ from ..config import settings
 from .. import trainer
 from ..db import get_db
 from ..models import Analysis, Media, ModelEvaluation, ReferenceClip, User
+from ..serialize import timestamp
 from ..storage import save_upload
 from ..video import LABELS, video_service
 from .video import reference_out
 
 router = APIRouter(prefix="/api", tags=["admin"])
 log = logging.getLogger("smartcricket")
+EVALUATION_MODELS = frozenset(("video", "pose", "fusion", "pose3d", "fusion3d"))
+EVALUATION_METRICS = ("top1", "macro_f1", "precision", "recall", "ece_before", "ece_after")
+MAX_EVALUATION_BYTES = 2 * 1024 * 1024
+MAX_EVALUATION_ROWS = 1000
 
 
 @router.get("/models")
@@ -36,27 +42,49 @@ def models(_: User = Depends(current_user), db: Session = Depends(get_db)):
         "evaluations": [{"model": e.model_name, "label": LABELS.get(e.model_name, e.model_name),
                          "accuracy": e.accuracy, "macro_f1": e.macro_f1, "precision": e.precision, "recall": e.recall,
                          "ece_before": e.ece_before, "ece_after": e.ece_after, "ms_per_clip": e.ms_per_clip,
-                         "evaluated_at": e.evaluated_at.isoformat()} for e in evals],
+                         "evaluated_at": timestamp(e.evaluated_at)} for e in evals],
     }
 
 
 @router.post("/admin/evaluations")
 async def import_evaluations(file: UploadFile, _: User = Depends(current_admin), db: Session = Depends(get_db)):
     """Import results/summary.json written by the training notebook (mean over seeds per model)."""
+    content = await file.read(MAX_EVALUATION_BYTES + 1)
+    if len(content) > MAX_EVALUATION_BYTES:
+        raise HTTPException(413, "Results file must be no larger than 2 MB")
     try:
-        data = json.loads(await file.read())
-        rows = data["results"]
-    except (ValueError, KeyError, TypeError):
+        data = json.loads(content)
+    except (ValueError, TypeError):
         raise HTTPException(422, "This is not a summary.json file from the training notebook")
+    if not isinstance(data, dict) or not isinstance(data.get("results"), list) or not data["results"]:
+        raise HTTPException(422, "The results file must contain a non-empty results list")
+    rows = data["results"]
+    if len(rows) > MAX_EVALUATION_ROWS:
+        raise HTTPException(422, f"Results file must contain at most {MAX_EVALUATION_ROWS} rows")
     by_model = defaultdict(list)
-    for r in rows:
-        by_model[r["model"]].append(r)
-    mean = lambda rs, k: sum(float(r[k]) for r in rs) / len(rs)
+    for index, row in enumerate(rows, 1):
+        if not isinstance(row, dict):
+            raise HTTPException(422, f"Result row {index} must be an object")
+        model = row.get("model")
+        if not isinstance(model, str) or model not in EVALUATION_MODELS:
+            raise HTTPException(422, f"Result row {index} must name a supported model")
+        values = {}
+        for metric in EVALUATION_METRICS:
+            value = row.get(metric)
+            if (isinstance(value, bool) or not isinstance(value, (int, float))
+                    or not 0 <= value <= 1 or not math.isfinite(value)):
+                raise HTTPException(422, f"Result row {index}: {metric} must be a finite number between 0 and 1")
+            values[metric] = float(value)
+        by_model[model].append(values)
+    # Finish validation and aggregation before touching the previously saved results.
+    evaluations = []
+    for model, values in by_model.items():
+        means = {metric: sum(row[metric] for row in values) / len(values) for metric in EVALUATION_METRICS}
+        evaluations.append(ModelEvaluation(model_name=model, accuracy=means["top1"], macro_f1=means["macro_f1"],
+                                           precision=means["precision"], recall=means["recall"],
+                                           ece_before=means["ece_before"], ece_after=means["ece_after"]))
     db.execute(delete(ModelEvaluation))
-    for m, rs in by_model.items():
-        db.add(ModelEvaluation(model_name=m, accuracy=mean(rs, "top1"), macro_f1=mean(rs, "macro_f1"),
-                               precision=mean(rs, "precision"), recall=mean(rs, "recall"),
-                               ece_before=mean(rs, "ece_before"), ece_after=mean(rs, "ece_after")))
+    db.add_all(evaluations)
     db.commit()
     return {"imported": {m: len(rs) for m, rs in by_model.items()}}
 
@@ -106,7 +134,7 @@ def delete_reference(ref_id: int, _: User = Depends(current_admin), db: Session 
 @router.get("/admin/users")
 def users(_: User = Depends(current_admin), db: Session = Depends(get_db)):
     counts = dict(db.execute(select(Media.user_id, func.count(Analysis.id)).join(Analysis).group_by(Media.user_id)).all())
-    return [{"id": u.id, "name": u.name, "email": u.email, "role": u.role, "created_at": u.created_at.isoformat(),
+    return [{"id": u.id, "name": u.name, "email": u.email, "role": u.role, "created_at": timestamp(u.created_at),
              "analyses": counts.get(u.id, 0)} for u in db.scalars(select(User).order_by(User.id)).all()]
 
 
@@ -134,16 +162,16 @@ def overview(_: User = Depends(current_admin), db: Session = Depends(get_db)):
             st["visible"].append(a.summary["visible"])
         if a.shot:
             st["shots"][a.shot] += 1
-        d = a.created_at.astimezone(timezone.utc).date()
+        d = aware(a.created_at).astimezone(timezone.utc).date()
         if d >= start:
             daily[d.isoformat()] += 1
 
     names = {u.id: u.name for u in users}
     players = [{
-        "id": u.id, "name": u.name, "email": u.email, "role": u.role, "joined": u.created_at.isoformat(),
+        "id": u.id, "name": u.name, "email": u.email, "role": u.role, "joined": timestamp(u.created_at),
         "photos": per_user[u.id]["photos"], "videos": per_user[u.id]["videos"],
         "analyses": per_user[u.id]["photos"] + per_user[u.id]["videos"],
-        "last_active": per_user[u.id]["last"].isoformat() if per_user[u.id]["last"] else None,
+        "last_active": timestamp(per_user[u.id]["last"]),
         "avg_visible": round(sum(per_user[u.id]["visible"]) / len(per_user[u.id]["visible"]), 1) if per_user[u.id]["visible"] else None,
         "top_shot": per_user[u.id]["shots"].most_common(1)[0][0] if per_user[u.id]["shots"] else None,
     } | trainer.snapshot(u, db) for u in users]
@@ -164,5 +192,5 @@ def overview(_: User = Depends(current_admin), db: Session = Depends(get_db)):
                   "admins": db.scalar(select(func.count(User.id)).where(User.role == "admin"))},
         "recent": [{"player": names.get(uid, "Unknown"), "mode": a.mode, "shot": a.shot,
                     "visible": (a.summary or {}).get("visible"), "label": a.media.session_label or a.media.original_name,
-                    "at": a.created_at.isoformat()} for a, uid in rows[:8]],
+                    "at": timestamp(a.created_at)} for a, uid in rows[:8]],
     }

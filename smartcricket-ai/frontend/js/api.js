@@ -72,7 +72,11 @@ async function api(path, { method = "GET", body, raw = false } = {}) {
   if (res.status === 401) { signOut("expired"); throw new Error("Please sign in again"); }
   if (!res.ok) {
     let msg = `Request failed (${res.status})`;
-    try { const j = await res.json(); if (typeof j.detail === "string") msg = j.detail; } catch {}
+    try {
+      const j = await res.json();
+      if (typeof j.detail === "string") msg = j.detail;
+      else if (Array.isArray(j.detail)) msg = j.detail.map(e => `${e.loc?.at(-1) || "Input"}: ${e.msg}`).join(". ");
+    } catch {}
     throw new Error(msg);
   }
   if (raw) return res;
@@ -85,7 +89,11 @@ async function blobUrl(path) {
   return URL.createObjectURL(await res.blob());
 }
 async function loadImage(img, path) {
-  try { img.src = await blobUrl(path); } catch { img.alt = "Image not available"; }
+  try {
+    const url = await blobUrl(path);
+    img.onload = img.onerror = () => URL.revokeObjectURL(url);
+    img.src = url;
+  } catch { img.alt = "Image not available"; }
 }
 async function openBlob(path, download) {
   const url = await blobUrl(path);
@@ -167,6 +175,7 @@ const ADMIN_TIPS = [
 const PLAYER_LINKS = [
   ["dashboard.html", "home", "Dashboard"], ["training.html", "dumbbell", "Training"], ["progress.html", "trophy", "Progress"],
   ["image.html", "camera", "Photo analysis"], ["video.html", "video", "Video analysis"], ["history.html", "clock", "History"],
+  ["practice.html", "compare", "Practice goals"], ["showcase.html", "spark", "Demo showcase"],
 ];
 const ADMIN_LINKS = [
   ["admin.html", "chart", "Overview"], ["players.html", "users", "All players"], ["models.html", "target", "Model results"],
@@ -185,7 +194,7 @@ function sidebar(active) {
     <a class="brand" href="${homePage()}" aria-label="SmartCricket home">${BALL}
       <div><b>SmartCricket</b><small>${isAdmin() ? "Admin console" : "AI batting coach"}</small></div></a>
     <nav class="nav" aria-label="Main">${links.map(([href, ic, label]) =>
-      `<a href="${href}" class="${href === active ? "active" : ""}"${href === active ? ' aria-current="page"' : ""}><span class="nav-ic">${icon(ic)}</span><span class="lbl">${label}</span></a>`).join("")}</nav>
+      `<a href="${href}" aria-label="${label}" title="${label}" class="${href === active ? "active" : ""}"${href === active ? ' aria-current="page"' : ""}><span class="nav-ic">${icon(ic)}</span><span class="lbl">${label}</span></a>`).join("")}</nav>
     <div class="side-tip" aria-live="polite">
       <div class="tip-head"><span class="tip-ball">${BALL.replace('class="ball"', 'class="tb"').replace(/bg1/g, "bgt")}</span>${isAdmin() ? "Admin tip" : "Coach's tip"}</div>
       <p id="tip-text"></p>
@@ -209,10 +218,40 @@ function sidebar(active) {
   showTip();
   setInterval(showTip, 6500);
 
-  const cur = links.find(l => l[0] === active) || links[0];
+  const view = location.pathname.split("/").pop();
+  const cur = ({ "analysis.html": [active, "doc", "Posture report"], "clip.html": [active, "doc", "Video report"],
+    "live.html": [active, "video", "Live mirror"] })[view] || links.find(l => l[0] === active) || links[0];
   topbar(cur[2], cur[1]);
+  if (!isAdmin()) practiceNavigation();
   smoothLinks();
   setTimeout(brandSelects);   // after the page script has created its <select> elements
+}
+
+// Keep the practice sequence visible across upload, result and training pages.
+function practiceNavigation() {
+  const page = location.pathname.split("/").pop();
+  const stages = [
+    { label: "Capture", href: "image.html", pages: ["image.html", "video.html"] },
+    { label: "Understand", href: "history.html", pages: ["analysis.html", "clip.html", "history.html"] },
+    { label: "Practise", href: "training.html", pages: ["training.html", "live.html"] },
+    { label: "Track", href: "progress.html", pages: ["progress.html", "practice.html"] },
+  ];
+  const nav = document.createElement("nav");
+  nav.className = "practice-path";
+  nav.setAttribute("aria-label", "Practice journey");
+  nav.innerHTML = `<span class="practice-path-label">Your practice loop</span><ol>${stages.map((s, i) =>
+    `<li><a href="${s.href}"${s.pages.includes(page) ? ' aria-current="step"' : ""}><span>${i + 1}</span>${s.label}</a></li>`).join("")}</ol>`;
+  document.querySelector(".page-head")?.after(nav);
+  if (["analysis.html", "clip.html"].includes(page)) {
+    const next = document.createElement("section");
+    next.className = "report-next";
+    next.setAttribute("aria-label", "Continue your practice");
+    const analysisId = new URLSearchParams(location.search).get("id");
+    next.innerHTML = `<div><b>Turn this report into a practice goal</b><p class="muted small">Save a baseline, practise, and compare a later capture from the same view.</p></div>
+      <div class="guided-actions" style="margin:0"><a class="btn" href="practice.html?baseline=${encodeURIComponent(analysisId || "")}">${icon("compare")} Set a goal or compare</a>
+      <a class="guided-secondary" href="training.html">Open my training plan ${icon("arrow")}</a></div>`;
+    document.querySelector("main").append(next);
+  }
 }
 
 // Profile, theme and sign-out in the top-right corner of every app page.
@@ -236,7 +275,8 @@ function topbar(pageLabel, pageIcon) {
   paint();
   tb.onclick = () => { toggleTheme(); paint(); };
   bar.querySelector("#signout").onclick = e => confirmSignOut(e.currentTarget);
-  if (!isAdmin()) refreshLevel();   // levels and XP belong to players only
+  // The showcase keeps fictional activity separate from the account's real XP.
+  if (!isAdmin() && herePage().split("?")[0] !== "showcase.html") refreshLevel();
 }
 
 // Level badge + XP bar in the top bar. Pages call it again after earning XP.
@@ -343,114 +383,9 @@ function greeting() {
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 }
 
-// ---------------------------------------------------------------- branded dropdown
-// Replaces the browser's native select popup (which cannot be styled) with an on-brand list.
-// The real <select> stays in the page, hidden, so .value, onchange, form reset and required still work.
-function brandSelect(sel) {
-  if (sel.dataset.branded) return;
-  sel.dataset.branded = "1";
-  const wrap = document.createElement("div");
-  wrap.className = "bsel";
-  if (sel.style.width) wrap.style.width = sel.style.width;
-  if (sel.style.minWidth) wrap.style.minWidth = sel.style.minWidth;
-  sel.parentNode.insertBefore(wrap, sel);
-  wrap.append(sel);
-  sel.classList.add("bsel-native");
-  sel.tabIndex = -1;
-  sel.required = false;   // a hidden required field would silently block submit; pages validate the value themselves
-  const btn = document.createElement("button");
-  btn.type = "button"; btn.className = "bsel-btn";
-  btn.setAttribute("aria-haspopup", "listbox"); btn.setAttribute("aria-expanded", "false");
-  const list = document.createElement("div");
-  list.className = "bsel-list"; list.setAttribute("role", "listbox"); list.hidden = true;
-  wrap.append(btn, list);
-  let active = -1;
-
-  const opts = () => [...sel.querySelectorAll("option")];
-  const paintBtn = () => {
-    const o = sel.options[sel.selectedIndex];
-    const placeholder = !o || o.value === "";
-    btn.innerHTML = `<span class="${placeholder ? "bsel-ph" : ""}">${esc(o ? o.textContent : "")}</span>${icon("chevron").replace("<svg", '<svg class="bsel-car"')}`;
-    btn.disabled = sel.disabled || !opts().length;
-  };
-  const build = () => {
-    let html = "", i = 0;
-    for (const node of sel.children) {
-      if (node.tagName === "OPTGROUP") {
-        html += `<div class="bsel-grp">${esc(node.label)}</div>`;
-        for (const o of node.children) html += item(o, i++);
-      } else html += item(node, i++);
-    }
-    list.innerHTML = html;
-    list.querySelectorAll(".bsel-opt").forEach(el => {
-      el.onmousedown = e => e.preventDefault();
-      el.onclick = () => choose(+el.dataset.i);
-    });
-    paintBtn();
-  };
-  const item = (o, i) => o.value === "" && sel.options.length > 1 ? "" : `<div class="bsel-opt${o.value === "" ? " ph" : ""}${o.selected ? " on" : ""}" role="option" data-i="${i}"
-      aria-selected="${o.selected}">${esc(o.textContent)}${icon("check").replace("<svg", '<svg class="bsel-tick"')}</div>`;
-  const highlight = i => {
-    const els = list.querySelectorAll(".bsel-opt");
-    els.forEach(e => e.classList.remove("hl"));
-    active = Math.max(0, Math.min(els.length - 1, i));
-    if (els[active]) { els[active].classList.add("hl"); els[active].scrollIntoView({ block: "nearest" }); }
-  };
-  const open = () => {
-    if (btn.disabled) return;
-    build();
-    list.hidden = false; wrap.classList.add("open"); btn.setAttribute("aria-expanded", "true");
-    const r = btn.getBoundingClientRect();
-    wrap.classList.toggle("up", innerHeight - r.bottom < 280 && r.top > innerHeight - r.bottom);
-    highlight(Math.max(0, domIdx(sel.selectedIndex)));
-  };
-  // list rows can skip the placeholder, so map between option index and row position
-  const rows = () => [...list.querySelectorAll(".bsel-opt")];
-  const domIdx = optIdx => rows().findIndex(el => +el.dataset.i === optIdx);
-  const close = () => { list.hidden = true; wrap.classList.remove("open"); btn.setAttribute("aria-expanded", "false"); };
-  const choose = i => {
-    const o = opts()[i];
-    if (o && !o.disabled) {
-      const changed = sel.selectedIndex !== i;
-      sel.selectedIndex = i;
-      if (changed) sel.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-    paintBtn(); close(); btn.focus();
-  };
-
-  btn.onclick = () => (list.hidden ? open() : close());
-  btn.onkeydown = e => {
-    const n = opts().length;
-    if (["ArrowDown", "ArrowUp"].includes(e.key)) {
-      e.preventDefault();
-      if (list.hidden) return open();
-      highlight(active + (e.key === "ArrowDown" ? 1 : -1));
-    } else if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      if (list.hidden) open(); else if (rows()[active]) choose(+rows()[active].dataset.i);
-    } else if (e.key === "Escape") close();
-    else if (e.key === "Tab") close();
-    else if (e.key.length === 1 && n) {   // type a letter to jump
-      const k = e.key.toLowerCase(), all = opts();
-      const start = (list.hidden ? sel.selectedIndex : +(rows()[active]?.dataset.i ?? -1)) + 1;
-      for (let j = 0; j < n; j++) {
-        const idx = (start + j) % n;
-        if (all[idx].value === "" && n > 1) continue;
-        if (all[idx].textContent.trim().toLowerCase().startsWith(k)) { list.hidden ? choose(idx) : highlight(domIdx(idx)); break; }
-      }
-    }
-  };
-  document.addEventListener("mousedown", e => { if (!wrap.contains(e.target)) close(); });
-  sel.addEventListener("change", paintBtn);
-  sel.form?.addEventListener("reset", () => setTimeout(paintBtn));
-  new MutationObserver(() => (list.hidden ? paintBtn() : build())).observe(sel, { childList: true, subtree: true, attributes: true });
-  // keep the button in step when code sets sel.value directly
-  const desc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
-  Object.defineProperty(sel, "value", { get() { return desc.get.call(this); }, set(v) { desc.set.call(this, v); paintBtn(); } });
-  Object.defineProperty(sel, "hidden", { get() { return wrap.hidden; }, set(v) { wrap.hidden = v; } });
-  paintBtn();
-}
-function brandSelects(root = document) { root.querySelectorAll("select.select").forEach(brandSelect); }
+// Shared select enhancement; the native control remains the data and validation source.
+function brandSelect(select) { return globalThis.SCSelect?.enhance(select); }
+function brandSelects(root = document) { return globalThis.SCSelect?.enhanceAll(root); }
 
 // ---------------------------------------------------------------- the one AI Coach (same look on every page)
 function coachHeader(topic) {
@@ -532,8 +467,9 @@ function threeDCard(el, getWorld, get2d, get3d) {
       <div class="v3-btns"><button type="button" data-v="side">Side</button><button type="button" data-v="front">Front</button><button type="button" data-v="top">Top</button><button type="button" data-v="spin">Spin</button></div></div>
     <canvas class="v3" aria-label="3D skeleton, drag to rotate"></canvas>
     <p class="faint small" style="margin:8px 0 14px">Drag to rotate, scroll to zoom. Estimated by MediaPipe from one camera.</p>
-    <table class="data v3-table"><thead><tr><th>Joint</th><th>2D (camera view)</th><th>3D (body)</th><th>Gap</th></tr></thead><tbody></tbody></table>
-    <p class="faint small" style="margin:10px 0 0">2D angles depend on where the camera stands; 3D angles do not. A large gap means the camera view was distorting the 2D number.</p>`;
+    <div class="table-scroll" role="region" aria-label="2D and estimated 3D joint angles; scroll horizontally for more columns" tabindex="0">
+      <table class="data v3-table"><thead><tr><th>Joint</th><th>2D (camera view)</th><th>3D (estimated)</th><th>Gap</th></tr></thead><tbody></tbody></table></div>
+    <p class="faint small" style="margin:10px 0 0">Both views are estimates from one camera. The gap describes a difference between estimates; it does not establish which value is correct. Camera view and visibility affect reliability.</p>`;
   const v = viewer3d(el.querySelector("canvas"), getWorld);
   const VIEWS = { side: [Math.PI / 2, .1], front: [0, .1], top: [0, 1.15] };
   el.querySelectorAll(".v3-btns button").forEach(b => (b.onclick = () => b.dataset.v === "spin" ? v.spin(true) : v.view(...VIEWS[b.dataset.v])));

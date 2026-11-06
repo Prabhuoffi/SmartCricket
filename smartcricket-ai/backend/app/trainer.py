@@ -5,7 +5,7 @@ The language model is only used to word the weekly summary and to answer free ch
 the same "no invented numbers" check as the analysis coach.
 """
 import json
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 
@@ -23,6 +23,8 @@ def today() -> date:
 
 
 def local_day(dt: datetime) -> date:
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)  # SQLite returns the stored UTC timestamp without its zone.
     return dt.astimezone().date()
 
 
@@ -125,7 +127,7 @@ def deg(a, joint):
 
 
 def bent(a, joint):
-    """The more bent (smaller) of the two sides, e.g. the front knee in a drive."""
+    """The more bent (smaller) of the two measured sides; this does not identify the front leg or arm."""
     vals = [v for v in (deg(a, f"left_{joint}"), deg(a, f"right_{joint}")) if v is not None]
     return min(vals) if vals else None
 
@@ -163,10 +165,8 @@ def full_photos(c: Ctx) -> int:
 
 
 def complete_days(c: Ctx) -> set:
-    by_day = defaultdict(list)
-    for d in c.drills:
-        by_day[d.day].append(d.done)
-    return {d for d, done in by_day.items() if all(done)}
+    return {day for day in {d.day for d in c.drills}
+            if (plan := daily_drills(c, day)) and all(d.done for d in plan)}
 
 
 def plan_weeks(c: Ctx) -> int:
@@ -224,13 +224,13 @@ def status(c: Ctx) -> dict:
     cur, best = streaks(days, c.day)
     have = {"analyses": len(c.analyses), "best_streak": best, "full_photos": full_photos(c), "plan_weeks": plan_weeks(c)}
     lv = level_info(have)
-    todays = [d for d in c.drills if d.day == c.day]
+    todays = daily_drills(c, c.day)
     since = c.day - timedelta(days=69)
     return {
         "level": lv["level"], "level_name": lv["name"], "next": lv["next"], "progress": lv["progress"],
         "levels": lv["levels"], "xp": xp(c, days), "streak": cur, "best_streak": best,
         "today": {"checked_in": c.day in c.logs, "drills_done": sum(d.done for d in todays), "drills_total": len(todays),
-                  "quiz_done": c.day in c.quiz},
+                  "quiz_done": c.day in c.quiz, "rest_day": needs_rest(c, c.day)},
         "days": {d.isoformat(): n for d, n in sorted(days.items()) if d >= since},
     }
 
@@ -296,7 +296,8 @@ def weak_spots(c: Ctx) -> list[tuple[str, str, dict]]:
 
 def difficulty(c: Ctx, day: date) -> dict:
     """Harder after a strong week, easier after a weak one (last 7 days before this day)."""
-    window = [d for d in c.drills if day - timedelta(days=7) <= d.day < day and d.code != "rest"]
+    window = [d for d in c.drills if day - timedelta(days=7) <= d.day < day and d.code != "rest"
+              and not needs_rest(c, d.day)]
     done = sum(d.done for d in window)
     rate = done / len(window) if window else None
     level, why = 2, "Normal level while we learn your routine."
@@ -341,19 +342,40 @@ def make_plan(db: Session, c: Ctx, day: date) -> list[PlanDrill]:
 
 def plan_for(db: Session, c: Ctx, day: date | None = None) -> list[PlanDrill]:
     day = day or c.day
-    existing = [d for d in c.drills if d.day == day]
+    existing = daily_drills(c, day)
     return existing or make_plan(db, c, day)
 
 
+def needs_rest(c: Ctx, day: date) -> bool:
+    log = c.logs.get(day)
+    return bool(log and log.soreness == "stop")
+
+
+def daily_drills(c: Ctx, day: date) -> list[PlanDrill]:
+    """Keep completed history, but expose recovery alone when the player needs rest."""
+    rest = needs_rest(c, day)
+    return [d for d in c.drills if d.day == day and (d.code == "rest") == rest]
+
+
 def replan_today(db: Session, c: Ctx) -> None:
-    """After a check-in, rebuild today's plan unless the player has already started it."""
+    """Rest overrides a started plan; completed drills and linked sessions keep their history."""
     todays = [d for d in c.drills if d.day == c.day]
-    if any(d.done for d in todays):
+    if needs_rest(c, c.day):
+        plan_for(db, c)
         return
+    if any(d.done and d.code != "rest" for d in todays):
+        return
+    removed = {d.id for d in todays if not d.done}
+    for session in c.live:
+        if session.drill_id in removed:
+            session.drill_id = None
+    db.flush()
     for d in todays:
+        if d.id not in removed:
+            continue
         db.delete(d)
     db.commit()
-    c.drills = [d for d in c.drills if d.day != c.day]
+    c.drills = [d for d in c.drills if d.id not in removed]
     make_plan(db, c, c.day)
 
 
@@ -464,9 +486,9 @@ def reflection_question(c: Ctx) -> dict | None:
             low = min((r["min"] for j, r in knee.items() if j.endswith("knee")), default=None)
             if low is not None:
                 return {"analysis_id": a.id, "options": ["Felt good", "Felt stiff", "Off balance", "Not sure"],
-                        "question": f"In your latest clip your front knee bent to {low}° at its deepest. How did the shot feel?"}
+                        "question": f"In your latest clip your more-bent knee measured {low}° at its deepest. How did the shot feel?"}
         if a.mode == "image" and (a.summary or {}).get("detected"):
-            for joint, label in (("knee", "front knee"), ("elbow", "front elbow"), ("hip", "hip")):
+            for joint, label in (("knee", "more-bent knee"), ("elbow", "more-bent elbow"), ("hip", "more-bent hip")):
                 v = bent(a, joint)
                 if v is not None:
                     return {"analysis_id": a.id, "options": ["Felt good", "Felt stiff", "Off balance", "Not sure"],
@@ -490,7 +512,7 @@ def week_stats(c: Ctx, start: date) -> dict:
     end = start + timedelta(days=6)
     in_week = lambda d: start <= d <= end
     days = active_days(c)
-    drills = [d for d in c.drills if in_week(d.day)]
+    drills = [d for day in {d.day for d in c.drills if in_week(d.day)} for d in daily_drills(c, day)]
     logs = [l for d, l in c.logs.items() if in_week(d)]
     week_photos = [a for a in photos(c) if in_week(local_day(a.created_at))]
     prev_photos = [a for a in photos(c) if in_week(local_day(a.created_at) + timedelta(days=7))]
@@ -524,10 +546,12 @@ def template_summary(s: dict) -> str:
     lines = [first]
     if s["knee_change_deg"] is not None:
         ch = s["knee_change_deg"]
-        lines.append(f"Your front-knee angle averaged {s['knee_avg_deg']}°, "
+        lines.append(f"Your more-bent knee angle averaged {s['knee_avg_deg']}°, "
                      + (f"{abs(ch)}° {'deeper' if ch < 0 else 'straighter'} than last week." if ch else "the same as last week."))
     elif s["knee_avg_deg"] is not None:
-        lines.append(f"Your front-knee angle averaged {s['knee_avg_deg']}° this week.")
+        lines.append(f"Your more-bent knee angle averaged {s['knee_avg_deg']}° this week.")
+    if s["knee_avg_deg"] is not None:
+        lines.append("Compare similar poses and camera views; a lower angle alone does not show improvement.")
     if s["balls_faced"]:
         lines.append(f"You logged {s['balls_faced']} balls faced.")
     if s["sore_days"]:
@@ -548,6 +572,8 @@ WEEK_RULES = """You are a friendly cricket batting coach writing a short weekly 
 Use ONLY the numbers in the week JSON. Write 3 or 4 short sentences, warm and encouraging, in plain English.
 Mention days trained and drills finished; mention the knee change only if knee_change_deg is not null
 (negative means a deeper bend). Mention soreness only to suggest rest; never give medical advice.
+The knee measurement is the smaller of the two measured knee angles, not an identified front leg.
+When knee data is present, explain briefly that pose and camera view affect comparisons and a lower angle alone does not show improvement.
 completion_pct of 80 or more means next week gets harder; under 40 means easier. Never invent numbers.
 If week_in_progress is true, the week is not over: talk about the days so far (days_so_far) and what is still possible,
 never call it a bad or tough week. If joined_this_week is true, welcome the player and keep it encouraging."""
@@ -614,6 +640,7 @@ def snapshot(user: User, db: Session) -> dict:
     cur, best = streaks(days, c.day)
     have = {"analyses": len(c.analyses), "best_streak": best, "full_photos": full_photos(c), "plan_weeks": plan_weeks(c)}
     lv = level_info(have)
-    week = [d for d in c.drills if c.day - timedelta(days=6) <= d.day <= c.day]
+    week = [d for day in {d.day for d in c.drills if c.day - timedelta(days=6) <= d.day <= c.day}
+            for d in daily_drills(c, day)]
     return {"level": lv["level"], "level_name": lv["name"], "streak": cur, "xp": xp(c, days)["total"],
             "plan_pct": round(sum(d.done for d in week) / len(week) * 100) if week else None}

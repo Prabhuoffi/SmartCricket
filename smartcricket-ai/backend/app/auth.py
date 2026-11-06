@@ -5,7 +5,7 @@ import bcrypt
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -22,7 +22,14 @@ def hash_password(pw: str) -> str:
 
 
 def verify_password(pw: str, hashed: str) -> bool:
-    return bcrypt.checkpw(pw.encode(), hashed.encode())
+    if len(pw.encode("utf-8")) > 72:
+        return False
+    try:
+        return bcrypt.checkpw(pw.encode(), hashed.encode())
+    except ValueError:
+        # bcrypt rejects passwords beyond 72 UTF-8 bytes and malformed hashes.
+        # A failed sign-in must stay a normal authentication error.
+        return False
 
 
 def make_token(user_id: int) -> str:
@@ -35,8 +42,10 @@ def current_user(cred: HTTPAuthorizationCredentials | None = Depends(bearer), db
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Please sign in")
     try:
         user_id = int(jwt.decode(cred.credentials, settings.jwt_secret, algorithms=["HS256"])["sub"])
-    except jwt.PyJWTError:
+    except (jwt.PyJWTError, KeyError, TypeError, ValueError, OverflowError):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session expired, please sign in again")
+    if not 0 < user_id <= 2**63 - 1:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid session, please sign in again")
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Account not found")
@@ -47,6 +56,21 @@ class RegisterIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Enter your name")
+        return value
+
+    @field_validator("password")
+    @classmethod
+    def bcrypt_length(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("Password must be at most 72 UTF-8 bytes")
+        return value
 
 
 class LoginIn(BaseModel):

@@ -1,0 +1,2054 @@
+{
+  "schema_version": 1,
+  "synthetic": true,
+  "provenance": "SYNTHETIC DEMONSTRATION DATA — not real player evidence or model evaluation",
+  "purpose": "UI and presentation demonstration only; never use as training, test, or accuracy evidence.",
+  "date_note": "Dates are fixed fictional scenario dates, not timestamps of real captures.",
+  "interpretation": "Angle changes and personal target distances do not establish better batting technique or causal improvement.",
+  "scenarios": [
+    {
+      "synthetic": true,
+      "provenance": "SYNTHETIC DEMONSTRATION DATA — not real player evidence or model evaluation",
+      "player": "Fictional Player A",
+      "handedness": "Right-handed (fictional profile)",
+      "setup_confirmed": true,
+      "baseline": {
+        "date": "2026-10-23",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 145,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 103,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 53,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 62,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 151,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 155,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 148,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 159,
+            "visibility": 0.94
+          }
+        }
+      },
+      "retest": {
+        "date": "2026-11-05",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 139,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 107,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 56,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 61,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 149,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 154,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 141,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 157,
+            "visibility": 0.94
+          }
+        }
+      },
+      "goal": {
+        "title": "Repeat a personal finish position",
+        "focus_joint": "left_knee",
+        "target_deg": 140,
+        "status": "Active — fictional workflow status",
+        "review_date": "2026-11-06",
+        "notes": "This illustrative target is chosen for the demo; it is not an ideal batting angle."
+      },
+      "sessions": [
+        {
+          "date": "2026-10-23",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-24",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-25",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-26",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 1,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-27",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-28",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-29",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional recovery day; no drills scheduled."
+        },
+        {
+          "date": "2026-10-30",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-31",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-01",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-02",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-03",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-04",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-05",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        }
+      ],
+      "id": "matched-setup",
+      "title": "Same setup, closer to a personal number",
+      "description": "A fictional baseline and retest share the stated recording setup. The focus angle is closer to the selected personal target; no skill gain is inferred."
+    },
+    {
+      "synthetic": true,
+      "provenance": "SYNTHETIC DEMONSTRATION DATA — not real player evidence or model evaluation",
+      "player": "Fictional Player B",
+      "handedness": "Right-handed (fictional profile)",
+      "setup_confirmed": true,
+      "baseline": {
+        "date": "2026-10-23",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 145,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 103,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 53,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 62,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 151,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 155,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 148,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 159,
+            "visibility": 0.94
+          }
+        }
+      },
+      "retest": {
+        "date": "2026-11-05",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 139,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 107,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 56,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 61,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 149,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 154,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 155,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 157,
+            "visibility": 0.94
+          }
+        }
+      },
+      "goal": {
+        "title": "Repeat a personal finish position",
+        "focus_joint": "left_knee",
+        "target_deg": 140,
+        "status": "Active — fictional workflow status",
+        "review_date": "2026-11-06",
+        "notes": "This illustrative target is chosen for the demo; it is not an ideal batting angle."
+      },
+      "sessions": [
+        {
+          "date": "2026-10-23",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-24",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-25",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 1,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-26",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-27",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-28",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 0,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-29",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional recovery day; no drills scheduled."
+        },
+        {
+          "date": "2026-10-30",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-31",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-01",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-02",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-03",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-04",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-05",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        }
+      ],
+      "id": "farther-target",
+      "title": "Same setup, farther from a personal number",
+      "description": "Practice activity can be present while a new measurement is farther from a chosen target. The page does not turn attendance into a technique claim."
+    },
+    {
+      "synthetic": true,
+      "provenance": "SYNTHETIC DEMONSTRATION DATA — not real player evidence or model evaluation",
+      "player": "Fictional Player C",
+      "handedness": "Right-handed (fictional profile)",
+      "setup_confirmed": false,
+      "baseline": {
+        "date": "2026-10-23",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 145,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 103,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 53,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 62,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 151,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 155,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 148,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 159,
+            "visibility": 0.94
+          }
+        }
+      },
+      "retest": {
+        "date": "2026-11-05",
+        "mode": "photo",
+        "view": "front-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "contact",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 139,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 107,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 56,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 61,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 149,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 154,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 141,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 157,
+            "visibility": 0.94
+          }
+        }
+      },
+      "goal": {
+        "title": "Repeat a personal finish position",
+        "focus_joint": "left_knee",
+        "target_deg": 140,
+        "status": "Active — fictional workflow status",
+        "review_date": "2026-11-06",
+        "notes": "This illustrative target is chosen for the demo; it is not an ideal batting angle."
+      },
+      "sessions": [
+        {
+          "date": "2026-10-23",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-24",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 0,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-25",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-26",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-27",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 0,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-28",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-29",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional recovery day; no drills scheduled."
+        },
+        {
+          "date": "2026-10-30",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-31",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-01",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 1,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-02",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-03",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-04",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-05",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 1,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        }
+      ],
+      "id": "capture-mismatch",
+      "title": "Camera and movement phase mismatch",
+      "description": "A different camera view and movement phase make the displayed changes exploratory. This illustrates why capture guidance matters."
+    },
+    {
+      "synthetic": true,
+      "provenance": "SYNTHETIC DEMONSTRATION DATA — not real player evidence or model evaluation",
+      "player": "Fictional Player D",
+      "handedness": "Right-handed (fictional profile)",
+      "setup_confirmed": true,
+      "baseline": {
+        "date": "2026-10-23",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 145,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 103,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 53,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 62,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 151,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 155,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 148,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 159,
+            "visibility": 0.94
+          }
+        }
+      },
+      "retest": {
+        "date": "2026-11-05",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "poor light",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 139,
+            "visibility": 0.29
+          },
+          "right_elbow": {
+            "deg": 107,
+            "visibility": 0.29
+          },
+          "left_shoulder": {
+            "deg": 56,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 61,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 149,
+            "visibility": 0.29
+          },
+          "right_hip": {
+            "deg": null,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 141,
+            "visibility": 0.29
+          },
+          "right_knee": {
+            "deg": 157,
+            "visibility": 0.29
+          }
+        }
+      },
+      "goal": {
+        "title": "Repeat a personal finish position",
+        "focus_joint": "left_knee",
+        "target_deg": 140,
+        "status": "Active — fictional workflow status",
+        "review_date": "2026-11-06",
+        "notes": "This illustrative target is chosen for the demo; it is not an ideal batting angle."
+      },
+      "sessions": [
+        {
+          "date": "2026-10-23",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 1,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-24",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-25",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-26",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 0,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-27",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-28",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-29",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional recovery day; no drills scheduled."
+        },
+        {
+          "date": "2026-10-30",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-31",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-01",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-02",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-03",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-04",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-05",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        }
+      ],
+      "id": "low-visibility",
+      "title": "Low visibility and missing measurements",
+      "description": "Occluded joints and a missing angle are excluded, leaving only two shared joints. The personal target cannot be evaluated when its joint is excluded."
+    },
+    {
+      "synthetic": true,
+      "provenance": "SYNTHETIC DEMONSTRATION DATA — not real player evidence or model evaluation",
+      "player": "Fictional Player E",
+      "handedness": "Right-handed (fictional profile)",
+      "setup_confirmed": true,
+      "baseline": {
+        "date": "2026-10-23",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 145,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 103,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 53,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 62,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 151,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 155,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 148,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 159,
+            "visibility": 0.94
+          }
+        }
+      },
+      "retest": {
+        "date": "2026-11-05",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 139,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 107,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 56,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 61,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 149,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 154,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 141,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 157,
+            "visibility": 0.94
+          }
+        }
+      },
+      "goal": {
+        "title": "Keep a consistent capture routine",
+        "focus_joint": "left_knee",
+        "target_deg": null,
+        "status": "Paused for rest — fictional workflow status",
+        "review_date": "2026-11-06",
+        "notes": "This illustrative target is chosen for the demo; it is not an ideal batting angle."
+      },
+      "sessions": [
+        {
+          "date": "2026-10-23",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-24",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-25",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 0,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-26",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-27",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-28",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-29",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional recovery day; no drills scheduled."
+        },
+        {
+          "date": "2026-10-30",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-31",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-01",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-02",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional recovery day; no drills scheduled."
+        },
+        {
+          "date": "2026-11-03",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional recovery day; no drills scheduled."
+        },
+        {
+          "date": "2026-11-04",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional recovery day; no drills scheduled."
+        },
+        {
+          "date": "2026-11-05",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional recovery day; no drills scheduled."
+        }
+      ],
+      "id": "recovery",
+      "title": "Recovery days and honest activity totals",
+      "description": "Rest days contain no planned drills. The activity denominator excludes them, and the goal has no numeric angle target."
+    },
+    {
+      "synthetic": true,
+      "provenance": "SYNTHETIC DEMONSTRATION DATA — not real player evidence or model evaluation",
+      "player": "Fictional Player F",
+      "handedness": "Left-handed (fictional profile)",
+      "setup_confirmed": true,
+      "baseline": {
+        "date": "2026-10-23",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "right side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 145,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 103,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 53,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 62,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 151,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 155,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 148,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 159,
+            "visibility": 0.94
+          }
+        }
+      },
+      "retest": {
+        "date": "2026-11-05",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "right side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 139,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 107,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 56,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 61,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 149,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 154,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 141,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 153,
+            "visibility": 0.94
+          }
+        }
+      },
+      "goal": {
+        "title": "Repeat a chosen right-knee measurement",
+        "focus_joint": "right_knee",
+        "target_deg": 154,
+        "status": "Active — fictional workflow status",
+        "review_date": "2026-11-06",
+        "notes": "The right knee is selected explicitly. Handedness alone does not identify a front or back leg."
+      },
+      "sessions": [
+        {
+          "date": "2026-10-23",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-24",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-25",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-26",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 1,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-27",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-28",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-29",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional recovery day; no drills scheduled."
+        },
+        {
+          "date": "2026-10-30",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-31",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-01",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-02",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-03",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-04",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-05",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        }
+      ],
+      "id": "left-handed-focus",
+      "title": "Left-handed profile with an explicit joint",
+      "description": "The player chooses the right knee explicitly. The example does not infer a front leg, an ideal angle or better batting from handedness."
+    },
+    {
+      "synthetic": true,
+      "provenance": "SYNTHETIC DEMONSTRATION DATA — not real player evidence or model evaluation",
+      "player": "Fictional Player G",
+      "handedness": "Right-handed (fictional profile)",
+      "setup_confirmed": true,
+      "baseline": {
+        "date": "2026-10-23",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 145,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 103,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 53,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 62,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 151,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 155,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 148,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 159,
+            "visibility": 0.94
+          }
+        }
+      },
+      "retest": {
+        "date": "2026-11-05",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 139,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 107,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 56,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 61,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 149,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 154,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 141,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 157,
+            "visibility": 0.94
+          }
+        }
+      },
+      "goal": {
+        "title": "Repeat a personal finish position",
+        "focus_joint": "left_knee",
+        "target_deg": null,
+        "status": "Paused — fictional rest period",
+        "review_date": "2026-11-06",
+        "notes": "This illustrative target is chosen for the demo; it is not an ideal batting angle."
+      },
+      "sessions": [
+        {
+          "date": "2026-10-23",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional rest period. There are no planned drills and no adherence percentage."
+        },
+        {
+          "date": "2026-10-24",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional rest period. There are no planned drills and no adherence percentage."
+        },
+        {
+          "date": "2026-10-25",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional rest period. There are no planned drills and no adherence percentage."
+        },
+        {
+          "date": "2026-10-26",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional rest period. There are no planned drills and no adherence percentage."
+        },
+        {
+          "date": "2026-10-27",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional rest period. There are no planned drills and no adherence percentage."
+        },
+        {
+          "date": "2026-10-28",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional rest period. There are no planned drills and no adherence percentage."
+        },
+        {
+          "date": "2026-10-29",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional rest period. There are no planned drills and no adherence percentage."
+        },
+        {
+          "date": "2026-10-30",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional rest period. There are no planned drills and no adherence percentage."
+        },
+        {
+          "date": "2026-10-31",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional rest period. There are no planned drills and no adherence percentage."
+        },
+        {
+          "date": "2026-11-01",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional rest period. There are no planned drills and no adherence percentage."
+        },
+        {
+          "date": "2026-11-02",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional rest period. There are no planned drills and no adherence percentage."
+        },
+        {
+          "date": "2026-11-03",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional rest period. There are no planned drills and no adherence percentage."
+        },
+        {
+          "date": "2026-11-04",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional rest period. There are no planned drills and no adherence percentage."
+        },
+        {
+          "date": "2026-11-05",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional rest period. There are no planned drills and no adherence percentage."
+        }
+      ],
+      "id": "all-rest",
+      "title": "A full rest period with no percentage",
+      "description": "Fourteen rest days produce zero planned drills. Adherence is unavailable, rather than an invented zero or perfect score."
+    },
+    {
+      "synthetic": true,
+      "provenance": "SYNTHETIC DEMONSTRATION DATA — not real player evidence or model evaluation",
+      "player": "Fictional Player H",
+      "handedness": "Right-handed (fictional profile)",
+      "setup_confirmed": true,
+      "baseline": {
+        "date": "2026-10-23",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 145,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 103,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 53,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 62,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 151,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 155,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 148,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 159,
+            "visibility": 0.94
+          }
+        }
+      },
+      "retest": {
+        "date": "2026-11-05",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 145,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 103,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 53,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 62,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 151,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 155,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 148,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 159,
+            "visibility": 0.94
+          }
+        }
+      },
+      "goal": {
+        "title": "Repeat a personal finish position",
+        "focus_joint": "left_knee",
+        "target_deg": 140,
+        "status": "Completed manually — fictional workflow status",
+        "review_date": "2026-11-06",
+        "notes": "A completed workflow can contain unchanged measurements. Completion is not a verified skill result."
+      },
+      "sessions": [
+        {
+          "date": "2026-10-23",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-24",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-25",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-26",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 1,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-27",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-28",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-29",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional recovery day; no drills scheduled."
+        },
+        {
+          "date": "2026-10-30",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-31",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-01",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-02",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-03",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-04",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-05",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        }
+      ],
+      "id": "unchanged-measurements",
+      "title": "Unchanged measurements and manual completion",
+      "description": "Every signed change is zero. The fictional goal is manually complete, demonstrating that a workflow status does not prove physical improvement."
+    },
+    {
+      "synthetic": true,
+      "provenance": "SYNTHETIC DEMONSTRATION DATA — not real player evidence or model evaluation",
+      "player": "Fictional Player I",
+      "handedness": "Right-handed (fictional profile)",
+      "setup_confirmed": true,
+      "baseline": {
+        "date": "2026-10-23",
+        "mode": "video",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 145,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 103,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 53,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 62,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 151,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 155,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 148,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 159,
+            "visibility": 0.94
+          }
+        },
+        "selected_frame": 11,
+        "frame_count": 15
+      },
+      "retest": {
+        "date": "2026-11-05",
+        "mode": "video",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 139,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 107,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 56,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 61,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 149,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 154,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 141,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 157,
+            "visibility": 0.94
+          }
+        },
+        "selected_frame": 13,
+        "frame_count": 15
+      },
+      "goal": {
+        "title": "Repeat a personal finish position",
+        "focus_joint": "left_knee",
+        "target_deg": 140,
+        "status": "Active — fictional workflow status",
+        "review_date": "2026-11-06",
+        "notes": "Fictional selected-frame snapshots at the stated finish phase; no automatic phase alignment or model inference."
+      },
+      "sessions": [
+        {
+          "date": "2026-10-23",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-24",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-25",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-26",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 1,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-27",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-28",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-29",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional recovery day; no drills scheduled."
+        },
+        {
+          "date": "2026-10-30",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-31",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-01",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-02",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-03",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-04",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-05",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        }
+      ],
+      "id": "video-frames",
+      "title": "Video snapshots at explicitly selected frames",
+      "description": "Constructed video-frame measurements illustrate matching a movement phase even when frame indices differ. No footage or automatic alignment is implied."
+    },
+    {
+      "synthetic": true,
+      "provenance": "SYNTHETIC DEMONSTRATION DATA — not real player evidence or model evaluation",
+      "player": "Fictional Player J",
+      "handedness": "Right-handed (fictional profile)",
+      "setup_confirmed": false,
+      "baseline": {
+        "date": "2026-10-23",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Cover drive",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 145,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 103,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 53,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 62,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 151,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 155,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 148,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 159,
+            "visibility": 0.94
+          }
+        }
+      },
+      "retest": {
+        "date": "2026-11-05",
+        "mode": "photo",
+        "view": "side-on",
+        "quality": "clear",
+        "shot": "Sweep",
+        "phase": "finish",
+        "body_side": "left side visible",
+        "angles": {
+          "left_elbow": {
+            "deg": 139,
+            "visibility": 0.94
+          },
+          "right_elbow": {
+            "deg": 107,
+            "visibility": 0.94
+          },
+          "left_shoulder": {
+            "deg": 56,
+            "visibility": 0.94
+          },
+          "right_shoulder": {
+            "deg": 61,
+            "visibility": 0.94
+          },
+          "left_hip": {
+            "deg": 149,
+            "visibility": 0.94
+          },
+          "right_hip": {
+            "deg": 154,
+            "visibility": 0.94
+          },
+          "left_knee": {
+            "deg": 141,
+            "visibility": 0.94
+          },
+          "right_knee": {
+            "deg": 157,
+            "visibility": 0.94
+          }
+        }
+      },
+      "goal": {
+        "title": "Repeat a personal finish position",
+        "focus_joint": "left_knee",
+        "target_deg": 140,
+        "status": "Active — fictional workflow status",
+        "review_date": "2026-11-06",
+        "notes": "This illustrative target is chosen for the demo; it is not an ideal batting angle."
+      },
+      "sessions": [
+        {
+          "date": "2026-10-23",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-24",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-25",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-26",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 1,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-27",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-28",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-29",
+          "check_in": "Rest",
+          "planned": 0,
+          "completed": 0,
+          "note": "Fictional recovery day; no drills scheduled."
+        },
+        {
+          "date": "2026-10-30",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-10-31",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-01",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-02",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-03",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 2,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-04",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        },
+        {
+          "date": "2026-11-05",
+          "check_in": "Ready",
+          "planned": 3,
+          "completed": 3,
+          "note": "Fictional shadow-batting, balance and repeat-capture practice."
+        }
+      ],
+      "id": "different-shot",
+      "title": "Different stated shots need a new capture",
+      "description": "The fictional baseline is a cover drive and the retest is a sweep. Numeric changes remain descriptive, with a clear stated-shot mismatch warning."
+    }
+  ]
+}

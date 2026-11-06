@@ -19,7 +19,8 @@
         <span class="chip ok reveal" id="privacy"></span>
       </div>
 
-      <div class="live-grid">
+      <section class="card reveal" id="live-state" aria-live="polite"><p class="muted">Checking today's training plan…</p></section>
+      <div class="live-grid" id="live-workspace" hidden>
         <!-- camera, controls and live angles -->
         <div class="live-main">
         <div class="card live-cam reveal">
@@ -32,7 +33,7 @@
             <div class="heard" id="heard" hidden></div>
           </div>
           <div class="cam-actions">
-            <span class="act-group"><button id="start"></button><button class="ghost" id="reset"></button></span>
+            <span class="act-group"><button id="start" disabled></button><button class="ghost" id="reset"></button></span>
             <span class="act-group"><button class="ghost icon-only" id="voice" aria-label="Voice coach"></button><button class="ghost icon-only" id="mic" aria-label="Voice commands"></button></span>
             <button class="ghost" id="moment" disabled></button>
             <span class="faint small" id="cam-note">Stand 2 to 3 metres back, side-on, with your whole body in view.</span>
@@ -70,11 +71,11 @@
           <div class="card reveal ghost-card">
             <div class="card-head" style="margin-bottom:10px"><div><span class="eyebrow-s">Shadow the pro</span><h2>Copy a model player</h2></div>
               <span class="ghost-ic" id="ghost-ic"></span></div>
-            <select class="select" id="ref" style="width:100%"></select>
+            <select class="select" id="ref" aria-label="Model player reference clip" style="width:100%"></select>
             <div class="ghost-opts">
               <label><input type="checkbox" id="ghost-on" checked> Show ghost</label>
               <label><input type="checkbox" id="ghost-flip"> Left-handed</label>
-              <label>Speed <select id="ghost-speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option></select></label>
+              <label>Speed <select id="ghost-speed" aria-label="Ghost playback speed" data-dropdown-compact><option value="0.5">0.5×</option><option value="1" selected>1×</option></select></label>
             </div>
             <div class="match" id="match" hidden>
               <div class="match-num"><b id="match-pct">–</b><span>live match</span></div>
@@ -91,10 +92,9 @@
       </div>
     </main>
   </div>
+  <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
   <script type="module">
-    import { FilesetResolver, PoseLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/vision_bundle.mjs";
-
     requireLogin();
     sidebar("training.html");
     const $ = id => document.getElementById(id);
@@ -116,19 +116,56 @@
       balance_hold:    { type: "hold", metric: "knee",     inZone: (v, still) => v < 165 && still, rule: "Hold a bent-knee finish, keeping still", seconds: r => r * 3 },
     };
     const params = new URLSearchParams(location.search);
-    const drillId = +params.get("drill") || null;
+    const drillId = Number(params.get("drill"));
     let drill = null, rule = null, target = 0;
+    let liveAllowed = false;
 
-    (async () => {
-      if (!drillId) return paintGoal();
+    function liveNotice(title, text, retry = false) {
+      liveAllowed = false;
+      $("start").disabled = true;
+      $("live-workspace").hidden = true;
+      $("live-state").hidden = false;
+      $("live-state").innerHTML = `<h2>${esc(title)}</h2><p class="muted">${esc(text)}</p>
+        <a class="btn" href="training.html">${icon("dumbbell")} Open today's plan</a>
+        ${retry ? '<button type="button" class="ghost" id="retry-live">Retry</button>' : ""}`;
+      $("retry-live")?.addEventListener("click", () => location.reload());
+    }
+
+    function recoveryNotice() {
+      $("title").textContent = "Recovery comes first today";
+      $("sub").textContent = "Your check-in calls for rest. Your recovery plan is ready in Training.";
+      liveNotice("Take a recovery day", "Leave batting drills for another day and open your recovery plan.");
+    }
+
+    const trainingReady = (async () => {
       const T = await api("/api/train/today");
-      drill = T.plan.find(d => d.id === drillId) || null;
+      if (T.rest_day) {
+        recoveryNotice();
+        return false;
+      }
+      if (!T.checkin) {
+        liveNotice("Complete today's check-in first", "Tell your coach how you feel before starting the camera. Your plan will then reflect your soreness and energy today.");
+        return false;
+      }
+      drill = params.has("drill") ? T.plan.find(d => d.id === drillId) || null : null;
+      if (params.has("drill") && !drill) {
+        liveNotice("This drill is no longer in today's plan", "The link may be from an earlier session or a changed check-in. Open Training to choose a current drill.");
+        return false;
+      }
       if (drill) {
         rule = RULES[drill.code] || null;
         target = !rule ? 0 : rule.type === "reps" ? drill.amount : (rule.seconds ? rule.seconds(drill.amount) : drill.amount);
       }
+      liveAllowed = true;
+      $("live-state").hidden = true;
+      $("live-workspace").hidden = false;
+      $("start").disabled = false;
       paintGoal();
-    })().catch(e => toast(e.message, "error"));
+      return true;
+    })().catch(e => {
+      liveNotice("Your training plan could not be checked", e.message, true);
+      return false;
+    });
 
     function paintGoal() {
       if (!drill) {
@@ -156,7 +193,7 @@
     // Speech is made by the browser itself (Web Speech API); nothing is sent to SmartCricket's server.
     const voice = { on: store.get("sc_voice") !== "off", last: {}, rec: null, listening: false };
     function say(text, key = text, gapMs = 4000, urgent = false) {
-      if (!voice.on || !("speechSynthesis" in window)) return;
+      if (!liveAllowed || !voice.on || !("speechSynthesis" in window)) return;
       const now = performance.now();
       if (voice.last[key] && now - voice.last[key] < gapMs) return;
       voice.last[key] = now;
@@ -202,6 +239,7 @@
       ["done", /\b(done|finish|finished|complete|completed)\b/],
     ];
     function handleCommand(text) {
+      if (!liveAllowed) return null;
       const said = text.toLowerCase().trim();
       const cmd = (COMMANDS.find(([, re]) => re.test(said)) || [])[0];
       heard(said, !!cmd);
@@ -226,6 +264,7 @@
     }
     const VOICE_HELP = "Voice commands need Chrome or Edge. Brave and Safari block the speech service they use. The voice coach still speaks in every browser.";
     async function listen() {
+      if (!liveAllowed) return;
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       const brave = navigator.brave && await navigator.brave.isBrave().catch(() => false);
       if (!SR || brave) return heard(VOICE_HELP, false, false, true), toast(VOICE_HELP, "warn");
@@ -329,6 +368,7 @@
       if (drill && !drill.done) await markDone();
     }
     async function markDone() {
+      if (!liveAllowed || !drill || drill.done) return;
       const b = $("done");
       b.disabled = true;
       try {
@@ -369,6 +409,7 @@
       $("ref").innerHTML = refs.length
         ? `<option value="">Choose a model player…</option>` + refs.map(r => `<option value="${r.id}">${esc(r.label)}</option>`).join("")
         : `<option value="">No reference clips yet</option>`;
+      $("ref").disabled = !refs.length;
     })().catch(() => {});
     $("ref").onchange = async () => {
       ghost.ref = null; $("match").hidden = true; $("record").disabled = true; $("rec-result").hidden = true;
@@ -562,6 +603,11 @@
           reps: rule?.type === "reps" ? count : 0, hold_s: rule?.type === "hold" ? count : 0, completed: finished,
           stats: { best_metric: sess.best?.metric ?? null, best_deg: sess.best?.value ?? null, ghost: ghost.ref?.label ?? null,
                    ghost_best: sess.ghostBest, ghost_avg: sess.ghostN ? Math.round(sess.ghostSum / sess.ghostN) : null, stroke_match: sess.stroke } } });
+        if (drill && finished) {
+          drill.done = true;
+          $("done").disabled = true;
+          $("done").innerHTML = `${icon("check")} Drill completion saved`;
+        }
         b.innerHTML = `${icon("check")} Saved · +${r.xp} XP`; xpFloat(b, r.xp); refreshLevel(r.status);
         if (r.level_up) celebrate(r.status.level, r.status.level_name);
         toast("Session saved to your Progress page", "ok"); resetSession();
@@ -589,6 +635,7 @@
     $("recog").innerHTML = `${icon("target")} Recognise my shot`;
     let shotModels = false;
     (async () => {
+      if (!await trainingReady) return;
       const st = await api("/api/video/status").catch(() => null);
       shotModels = !!st?.shot_models;
       if (!shotModels) {
@@ -631,13 +678,15 @@
     let landmarker = null, running = false, stream = null, frames = 0, fpsT = performance.now(), lastVideoT = -1;
 
     async function loadModel() {
+      const { FilesetResolver, PoseLandmarker } = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/vision_bundle.mjs");
       const files = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/wasm");
       const opts = delegate => ({ baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task", delegate },
                                   runningMode: "VIDEO", numPoses: 1 });
       try { return await PoseLandmarker.createFromOptions(files, opts("GPU")); }
       catch { return await PoseLandmarker.createFromOptions(files, opts("CPU")); }   // no WebGL: slower but works
     }
-    const modelReady = loadModel().then(m => {
+    const modelReady = trainingReady.then(allowed => allowed ? loadModel() : null).then(m => {
+      if (!m) return;
       landmarker = m;
       $("cam-msg").innerHTML = `${icon("video")}<b>Ready</b><small>Press "Start camera" and allow camera access.</small>`;
     }).catch(e => {
@@ -668,11 +717,20 @@
     }
 
     async function start() {
+      if (!liveAllowed) return;
       if (running) return stop();
       if (starting) return;
       if (!navigator.mediaDevices?.getUserMedia)
         return camMsg("alert", "Camera not available here", "Open the app at http://localhost:8000 in Chrome, Edge or Brave. Cameras only work on localhost or https.");
       starting = true; $("start").disabled = true;
+      try {
+        const status = await api("/api/train/status");
+        if (status.today?.rest_day) { recoveryNotice(); starting = false; return; }
+      } catch (e) {
+        liveNotice("Your training plan could not be checked", e.message, true);
+        starting = false;
+        return;
+      }
       if (!landmarker) camMsg("", "Loading the pose model…", "One moment, then the camera starts.", true);
       await modelReady;
       if (!landmarker) { starting = false; $("start").disabled = false; return; }

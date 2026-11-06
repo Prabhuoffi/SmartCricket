@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from . import auth
 from .config import settings
 from .db import Base, engine
-from .routers import admin, analyses, coach, dashboard, image, reports, train, video
+from .routers import admin, analyses, coach, dashboard, image, practice, practice_reports, reports, train, video
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -34,7 +34,8 @@ async def revalidate_frontend(request, call_next):
 
 
 # Player-only areas: an administrator account gets 403 here (Section 4.1, user classes).
-for r in (image.router, analyses.router, dashboard.router, reports.router, coach.router, train.router):
+for r in (image.router, analyses.router, dashboard.router, reports.router, coach.router, train.router,
+          practice.router, practice_reports.router):
     app.include_router(r, dependencies=[Depends(auth.current_player)])
 # Shared (mixed per endpoint) and admin areas.
 for r in (auth.router, video.router, admin.router):
@@ -111,6 +112,11 @@ def lan_stop(_: auth.User = Depends(auth.current_user)):
 def landing():
     """The public landing page lives at the site root; the app pages stay under /app/."""
     return FileResponse(settings.frontend_dir / "index.html")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return FileResponse(settings.frontend_dir / "img" / "favicon.svg", media_type="image/svg+xml")
 
 
 app.mount("/app", StaticFiles(directory=settings.frontend_dir, html=True), name="frontend")

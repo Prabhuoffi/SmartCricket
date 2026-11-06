@@ -84,7 +84,7 @@ def models_dir(tmp_path, monkeypatch):
     for kind in ("video", "pose", "fusion", "pose3d", "fusion3d"):
         torch.manual_seed(0)
         torch.save({"kind": kind, "state_dict": sc.build_model(kind).state_dict(), "temperature": 1.5,
-                    "classes": sc.CLASSES}, tmp_path / f"{kind}.pt")
+                    "classes": sc.BASE_CLASSES}, tmp_path / f"{kind}.pt")
     video_service.models.clear()
     yield tmp_path
     video_service.models.clear()

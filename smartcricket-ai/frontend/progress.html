@@ -12,7 +12,7 @@
     <main>
       <div class="page-head">
         <div class="reveal"><h1>My progress</h1><p class="muted">Levels, XP and your weekly report from the coach.</p></div>
-        <a class="btn reveal" href="training.html" id="cta"></a>
+        <div class="guided-actions reveal" style="margin:0"><a class="btn ghost" href="practice.html">Compare my practice</a><a class="btn" href="training.html" id="cta"></a></div>
       </div>
 
       <!-- level ladder -->
@@ -32,7 +32,7 @@
       <!-- weekly report -->
       <div class="card reveal week-card" style="margin-top:18px">
         <div class="card-head"><div><span class="eyebrow-s">Weekly report</span><h2 id="week-title">This week</h2></div>
-          <div class="seg-tabs" role="tablist"><button type="button" class="on" data-o="0">This week</button><button type="button" data-o="1">Last week</button></div></div>
+          <div class="seg-tabs" role="group" aria-label="Report week"><button type="button" class="on" aria-pressed="true" data-o="0">This week</button><button type="button" aria-pressed="false" data-o="1">Last week</button></div></div>
         <div class="week-tiles" id="week-tiles"></div>
         <div class="coach-note" id="week-note"></div>
       </div>
@@ -49,13 +49,15 @@
           <div style="position:relative;height:230px"><canvas id="weeks"></canvas></div>
         </div>
         <div class="card reveal">
-          <div class="card-head"><div><span class="eyebrow-s">Trend</span><h2>Front knee, weekly average</h2></div><span class="chip info">degrees</span></div>
+          <div class="card-head"><div><span class="eyebrow-s">Measurement trend</span><h2>More-bent knee, weekly average</h2></div><span class="chip info">degrees</span></div>
+          <p class="muted small">Uses the smaller measured knee angle in each photo. Compare similar poses and camera views; the chart does not identify the front leg or score technique.</p>
           <div style="position:relative;height:230px"><canvas id="knee"></canvas></div>
           <div id="knee-empty" class="muted small" hidden style="padding:30px 0;text-align:center">Analyse photos across a few weeks to see this trend.</div>
         </div>
       </div>
     </main>
   </div>
+  <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
   <script>
     requireLogin();
@@ -63,7 +65,7 @@
     const $ = id => document.getElementById(id);
     $("cta").innerHTML = `${icon("dumbbell")} Today's training`;
     revealAll();
-    let P;
+    let P, weekRequest = 0;
     const wk = iso => new Date(iso + "T00:00").toLocaleDateString(undefined, { day: "numeric", month: "short" });
 
     function ladder(st) {
@@ -99,6 +101,7 @@
     }
 
     async function week(offset) {
+      const request = ++weekRequest;
       const w = P.weeks[P.weeks.length - 1 - offset];
       $("week-title").textContent = `${offset ? "Last week" : "This week"} · ${wk(w.week_start)} – ${wk(w.week_end)}`;
       const ch = w.knee_change_deg;
@@ -106,22 +109,34 @@
         [`${w.days_trained}<small>/${w.week_in_progress ? w.days_so_far : 7}</small>`, w.week_in_progress ? "Days trained so far" : "Days trained"],
         [w.drills_planned ? `${w.drills_done}<small>/${w.drills_planned}</small>` : "–", "Drills done"],
         [w.balls_faced, "Balls faced"],
-        [ch == null ? (w.knee_avg_deg != null ? `${w.knee_avg_deg}°` : "–") : `${ch > 0 ? "+" : ""}${ch}°`, ch == null ? "Front knee avg" : "Knee vs last week"],
+        [ch == null ? (w.knee_avg_deg != null ? `${w.knee_avg_deg}°` : "–") : `${ch > 0 ? "+" : ""}${ch}°`, ch == null ? "More-bent knee avg" : "Knee vs last week"],
         [`${w.quiz_correct}<small>/${w.quiz_answered}</small>`, "Quiz right"],
       ].map(([v, l]) => `<div class="wt"><b>${v}</b><span>${l}</span></div>`).join("");
       const note = $("week-note");
-      const paint = text => { note.innerHTML = `<span class="cn-ball">${BALL}</span><div><b>Coach's summary</b><p>${esc(text)}</p></div>
+      const paint = text => { if (request !== weekRequest) return; note.innerHTML = `<span class="cn-ball">${BALL}</span><div><b>Coach's summary</b><p>${esc(text)}</p></div>
         <button type="button" class="ghost" id="regen">${icon("spark")} ${text ? "Rewrite" : "Write"}</button>`; note.querySelector("#regen").onclick = () => write(true); };
       async function write(refresh) {
         note.innerHTML = `<span class="cn-ball spin">${BALL}</span><div><b>Coach's summary</b><p class="muted">Your coach is writing this week's summary…</p></div>`;
         try { const r = await api(`/api/train/week/summary?offset=${offset}&refresh=${refresh}`, { method: "POST" }); w.summary = r.text; paint(r.text); }
-        catch (e) { paint(w.summary || ""); toast(e.message, "error"); }
+        catch (e) { if (request === weekRequest) { paint(w.summary || ""); toast(e.message, "error"); } }
       }
       write(false);  // the server reuses the stored summary unless this week's numbers changed
     }
 
     function charts() {
       const W = P.weeks, labels = W.map(w => wk(w.week_start));
+      if (typeof Chart === "undefined") {
+        const weeksPanel = $("weeks").parentElement;
+        weeksPanel.style.height = "auto";
+        weeksPanel.innerHTML = `<p class="muted small">Chart unavailable. Your training totals are shown below.</p>
+          <table aria-label="Weekly training totals"><thead><tr><th>Week of</th><th>Days trained</th><th>Drills finished</th></tr></thead>
+          <tbody>${W.map(w => `<tr><td>${wk(w.week_start)}</td><td>${w.days_trained}</td><td>${w.drills_done} / ${w.drills_planned}</td></tr>`).join("")}</tbody></table>`;
+        const knee = W.filter(w => w.knee_avg_deg != null), panel = $("knee").parentElement;
+        panel.style.height = "auto";
+        panel.innerHTML = knee.length ? `<p class="muted small">Chart unavailable. Latest weekly average: <b>${knee[knee.length - 1].knee_avg_deg}°</b> for the week of ${wk(knee[knee.length - 1].week_start)}.</p>`
+          : '<p class="muted small">Analyse photos across a few weeks to see this trend.</p>';
+        return;
+      }
       new Chart($("weeks"), {
         data: { labels, datasets: [
           { type: "bar", label: "Days trained", data: W.map(w => w.days_trained), backgroundColor: W.map((w, i) => i === W.length - 1 ? "#c8102e" : "#0f5c3a"), borderRadius: 6, maxBarThickness: 26, yAxisID: "y" },
@@ -152,7 +167,7 @@
           <small>${wk(x.day)} · ${Math.round(x.duration_s / 60) || "<1"} min${x.reps ? ` · ${x.reps} reps` : ""}${x.hold_s ? ` · ${x.hold_s} s held` : ""}${x.stats.best_deg != null ? ` · best ${N[x.stats.best_metric] || ""} ${x.stats.best_deg}°` : ""}${x.stats.ghost_best != null ? ` · ghost ${x.stats.ghost_best}%` : ""}${x.stats.stroke_match != null ? ` · stroke ${x.stats.stroke_match}%` : ""}</small></div></div>`).join("");
       }
       document.querySelectorAll(".seg-tabs button").forEach(b => b.onclick = () => {
-        document.querySelectorAll(".seg-tabs button").forEach(x => x.classList.toggle("on", x === b));
+        document.querySelectorAll(".seg-tabs button").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", x === b); });
         week(+b.dataset.o);
       });
     })().catch(e => toast(e.message, "error"));

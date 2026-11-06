@@ -14,10 +14,19 @@
         <div class="reveal">
           <p class="muted small" id="today" style="margin:0 0 4px"></p>
           <h1 id="hello">Hello</h1>
-          <p class="muted">Here is how your batting is shaping up.</p>
+          <p class="muted">Capture your technique, understand the measurements, and build a consistent practice habit.</p>
         </div>
         <a class="btn reveal" href="image.html" id="cta"></a>
       </div>
+
+      <section class="guided-session reveal" id="guided-session" aria-live="polite" aria-busy="true">
+        <p class="muted small">Preparing your next step…</p>
+      </section>
+      <section class="report-next reveal" style="margin:0 0 20px" aria-label="Practice goals">
+        <div><span class="eyebrow-s">Baseline → practise → retest</span><b style="display:block;margin-top:6px">See what changed after practice</b>
+          <p class="muted small" id="goal-summary">Save a personal goal and compare a later capture with your baseline.</p></div>
+        <a class="btn ghost" href="practice.html" id="goal-link">Practice goals →</a>
+      </section>
 
       <!-- 1. scoreboard -->
       <div class="scoreboard reveal" id="board"></div>
@@ -32,7 +41,7 @@
           <p class="faint small" style="margin:12px 0 0">Averages use only joints that were clearly visible. "Left" and "right" are the batter's own sides.</p>
         </div>
         <div class="card reveal best-card">
-          <div class="card-head"><div><span class="eyebrow-s">Highlight</span><h2>Best photo</h2></div></div>
+          <div class="card-head"><div><span class="eyebrow-s">Capture quality</span><h2>Clearest photo</h2></div></div>
           <div id="best"></div>
         </div>
       </div>
@@ -46,10 +55,11 @@
             <span class="cal-key small faint">Less <i class="l0"></i><i class="l1"></i><i class="l2"></i><i class="l3"></i> More</span></div>
         </div>
         <div class="card reveal">
-          <div class="card-head"><div><span class="eyebrow-s">Trend</span><h2>Front knee angle over time</h2></div><span class="chip info">degrees</span></div>
-          <p class="muted small" style="margin:0 0 10px">The more bent knee in each photo. Lower means a deeper bend.</p>
+          <div class="card-head"><div><span class="eyebrow-s">Measurement trend</span><h2>More-bent knee angle over time</h2></div><span class="chip info">degrees</span></div>
+          <p class="muted small" style="margin:0 0 10px">The smaller of the two measured knee angles. This does not identify your front leg. Compare similar poses and camera views; a lower value alone does not indicate improvement.</p>
           <div style="position:relative;height:200px"><canvas id="knee"></canvas></div>
           <div id="knee-empty" class="muted small" hidden style="padding:30px 0;text-align:center">Analyse a few photos to see your trend.</div>
+          <div id="knee-fallback" class="small" hidden></div>
         </div>
       </div>
 
@@ -73,7 +83,9 @@
       </div>
     </main>
   </div>
+  <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
+  <script src="js/journey.js?v=1"></script>
   <script>
     requireLogin();
     sidebar("dashboard.html");
@@ -84,6 +96,14 @@
     $("cta").innerHTML = `${icon("camera")} New photo analysis`;
     $("up-ico").innerHTML = icon("upload");
     revealAll();
+    api("/api/practice/goals").then(({ goals }) => {
+      const active = goals.filter(goal => goal.status === "active");
+      if (active.length) {
+        $("goal-summary").textContent = `${active.length} active ${active.length === 1 ? "goal" : "goals"} · ${active[0].title}`;
+        $("goal-link").href = `practice.html?goal=${active[0].id}`;
+        $("goal-link").textContent = "Continue my goal →";
+      }
+    }).catch(() => { $("goal-summary").textContent = "Goal status could not be loaded. Open Practice goals to retry."; });
 
     const JOINTS = [["left_knee", "Left knee"], ["right_knee", "Right knee"], ["left_elbow", "Left elbow"], ["right_elbow", "Right elbow"]];
     const dayKey = d => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
@@ -92,6 +112,17 @@
       const [hist, st] = await Promise.all([api("/api/history"), api("/api/train/status").catch(() => null)]);  // history newest first
       const photos = hist.filter(a => a.mode === "image" && a.summary && a.summary.detected);
       const videos = hist.filter(a => a.mode === "video");
+      const next = SmartCricketJourney.nextStep(hist, st);
+      const latestUsable = hist.find(SmartCricketJourney.hasMeasurements);
+      $("guided-session").setAttribute("aria-busy", "false");
+      $("guided-session").innerHTML = `<div class="guided-copy"><span class="eyebrow-s">Your next step</span>
+        <h2>${esc(next.title)}</h2><p>${esc(next.text)}</p>
+        <div class="guided-actions"><a class="btn" href="${next.href}">${icon(next.icon)} ${esc(next.label)} ${icon("arrow")}</a>
+          ${latestUsable && next.key !== "unavailable" ? `<a class="guided-secondary" href="${resultPage(latestUsable)}">Open latest report</a>` : `<a class="guided-secondary" href="video.html">Explore video analysis</a>`}
+          ${!st ? '<span class="muted small">Training status unavailable.</span><button type="button" class="ghost" id="retry-status">Retry status</button>' : ""}</div></div>
+        <div class="guided-evidence"><span>${icon("target")}</span><b>One focused session at a time</b>
+          <p>Capture → understand → practise → track</p><small>${hist.length} saved ${hist.length === 1 ? "analysis" : "analyses"}${st ? ` · ${st.streak}-day streak` : ""}</small></div>`;
+      $("retry-status")?.addEventListener("click", () => location.reload());
 
       // ---------------------------------------------------------- practice days and streak
       // A practice day counts analyses, finished drills and check-ins (from the server when available).
@@ -106,11 +137,11 @@
         while (perDay[dayKey(d)]) { streak++; d.setDate(d.getDate() - 1); }
       }
       if (st) {
-        const t = st.today, total = t.drills_total || 3;
+        const t = st.today, total = t.drills_total;
         $("today-plan").hidden = false;
         $("today-plan").innerHTML = `<span class="tb-ic">${icon("dumbbell")}</span>
-          <div><b>${!t.checked_in ? "Your coach is waiting for today's check-in" : t.drills_done >= total ? "Today's drills are all done. Great work!" : "Today's training plan"}</b>
-          <small>${t.drills_done} of ${total} drills done · Level ${st.level} ${esc(st.level_name)} · ${st.xp.total} XP${t.quiz_done ? "" : " · quiz waiting"}</small></div>
+          <div><b>${t.rest_day ? "Your recovery plan is ready" : !t.checked_in ? "Your coach is waiting for today's check-in" : total > 0 && t.drills_done >= total ? "Today's drills are all done. Great work!" : "Today's training plan"}</b>
+          <small>${total ? `${t.drills_done} of ${total} drills done` : "Open Training to prepare your daily plan"} · Level ${st.level} ${esc(st.level_name)} · ${st.xp.total} XP${t.quiz_done ? "" : " · quiz waiting"}</small></div>
           <span class="tb-dots">${Array.from({ length: total }, (_, i) => `<i class="${i < t.drills_done ? "on" : ""}"></i>`).join("")}</span>
           <span class="go">${t.checked_in ? "Open plan" : "Check in"} →</span>`;
       }
@@ -157,7 +188,7 @@
       if (best) {
         const measured = Object.values(best.angles || {}).filter(v => v.deg !== null).length;
         $("best").innerHTML = `<a class="best" href="${resultPage(best)}">
-          <div class="best-img"><img id="best-img" alt="Best analysed photo"><span class="chip ok best-badge">${best.summary.visible}/33 points</span>
+          <div class="best-img"><img id="best-img" alt="Photo with the most visible body landmarks"><span class="chip ok best-badge">${best.summary.visible}/33 points</span>
             <span class="best-star">${icon("spark")}</span></div>
           <div class="best-meta"><b>${esc(best.session_label || (/^[0-9a-f]{16,}/i.test(best.original_name) ? "Batting photo" : best.original_name))}</b><span class="faint small">${fmtDate(best.created_at)}</span>
             <div class="best-stats"><span><b>${best.summary.visible}</b> points visible</span><span><b>${measured}</b>/8 angles</span>
@@ -188,7 +219,7 @@
         const v = ["left_knee", "right_knee"].map(k => a.angles?.[k]?.deg).filter(x => x != null);
         return v.length ? { date: a.created_at, deg: Math.min(...v) } : null;
       }).filter(Boolean);
-      if (knee.length) {
+      if (knee.length && typeof Chart !== "undefined") {
         const ctx = $("knee").getContext("2d"), g = ctx.createLinearGradient(0, 0, 0, 200);
         g.addColorStop(0, "rgba(15,92,58,.32)"); g.addColorStop(1, "rgba(15,92,58,0)");
         new Chart(ctx, { type: "line",
@@ -196,7 +227,15 @@
             borderWidth: 3, pointRadius: 5, pointHoverRadius: 8, pointBackgroundColor: "#fff", pointBorderColor: "#c8102e", pointBorderWidth: 2.5 }] },
           options: { maintainAspectRatio: false, animation: { duration: reduceMotion ? 0 : 1300 }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ` ${c.parsed.y.toFixed(1)}°` } } },
             scales: { x: { grid: { display: false } }, y: { suggestedMin: 90, suggestedMax: 180, ticks: { callback: v => v + "°" }, grid: { color: "rgba(11,26,18,.06)" } } } } });
-      } else { $("knee").parentElement.hidden = true; $("knee-empty").hidden = false; }
+      } else {
+        $("knee").parentElement.hidden = true;
+        if (!knee.length) $("knee-empty").hidden = false;
+        else {
+          $("knee-fallback").hidden = false;
+          $("knee-fallback").innerHTML = '<p class="muted">Chart unavailable. Your measurements are shown below.</p><div class="measurement-list">' +
+            knee.slice(-8).map(p => `<div><span>${fmtDay(p.date)}</span><b>${p.deg.toFixed(1)}°</b></div>`).join("") + '</div>';
+        }
+      }
 
       // ---------------------------------------------------------- 6. recent
       $("recent").innerHTML = hist.length ? hist.slice(0, 4).map(a => `
@@ -206,7 +245,11 @@
           <span class="ri-go">${icon("arrow")}</span></a>`).join("")
         : `<div class="empty" style="padding:24px 0"><p class="muted">No analyses yet.</p></div>`;
       $("recent").querySelectorAll("img[data-src]").forEach(img => loadImage(img, img.dataset.src));
-    })().catch(e => toast(e.message, "error"));
+    })().catch(e => {
+      $("guided-session").setAttribute("aria-busy", "false");
+      $("guided-session").innerHTML = `<div>${alertHtml("error", e.message)}<button type="button" class="ghost" id="retry-dashboard">Retry dashboard</button></div>`;
+      $("retry-dashboard").onclick = () => location.reload();
+    });
 
     // ---------------------------------------------------------- quick upload
     const drop = $("drop");
@@ -214,25 +257,36 @@
     ["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, () => drop.classList.remove("over")));
     drop.addEventListener("drop", e => { e.preventDefault(); if (e.dataTransfer.files[0]) quick(e.dataTransfer.files[0]); });
     $("qfile").onchange = () => $("qfile").files[0] && quick($("qfile").files[0]);
+    let quickBusy = false;
     function quick(file) {
+      if (quickBusy) return;
       if (!["image/jpeg", "image/png"].includes(file.type)) return toast("Only JPG or PNG images are allowed", "error");
+      if (!file.size) return toast("This file is empty. Choose another photo.", "error");
       if (file.size > 10 * 1024 * 1024) return toast("This file is larger than 10 MB", "error");
       const form = new FormData(); form.append("file", file);
       const xhr = new XMLHttpRequest();
+      quickBusy = true; $("qfile").disabled = true;
       xhr.open("POST", "/api/image/analyse");
+      xhr.timeout = 120000;
       xhr.setRequestHeader("Authorization", `Bearer ${getToken()}`);
       $("qbar").hidden = false; $("qmsg").textContent = "Uploading…";
       xhr.upload.onprogress = e => { if (e.lengthComputable) $("qbar").firstElementChild.style.width = (e.loaded / e.total) * 100 + "%"; };
       xhr.upload.onload = () => ($("qmsg").textContent = "Finding body landmarks…");
       xhr.onload = () => {
         let j = {}; try { j = JSON.parse(xhr.responseText); } catch {}
-        if (xhr.status === 401) return signOut();
-        if (xhr.status !== 200) { $("qbar").hidden = true; $("qmsg").textContent = ""; return toast(typeof j.detail === "string" ? j.detail : "Upload failed", "error"); }
+        if (xhr.status === 401) return signOut("expired");
+        if (xhr.status !== 200) return quickFail(typeof j.detail === "string" ? j.detail : "Upload failed");
         $("qmsg").textContent = "Done! Opening your report…";
         setTimeout(() => go(`analysis.html?id=${j.id}`), 400);
       };
-      xhr.onerror = () => { $("qbar").hidden = true; toast("Network error, please try again", "error"); };
+      xhr.onerror = () => quickFail("Network error, please try again");
+      xhr.ontimeout = () => quickFail("The request timed out. Check History before retrying; your analysis may have finished.");
       xhr.send(form);
+    }
+    function quickFail(message) {
+      quickBusy = false; $("qfile").disabled = false; $("qfile").value = "";
+      $("qbar").hidden = true; $("qbar").firstElementChild.style.width = "0%";
+      $("qmsg").textContent = message; toast(message, "error");
     }
   </script>
 </body>

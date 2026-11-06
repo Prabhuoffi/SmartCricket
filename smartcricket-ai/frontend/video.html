@@ -15,7 +15,7 @@
             how each joint moved through the shot and where you moved most.</p></div>
       </div>
 
-      <div id="loading" class="card"><div class="skeleton" style="height:180px"></div></div>
+      <div id="loading" class="card" role="status" aria-live="polite"><p class="muted">Checking available analysis options…</p><div class="skeleton" style="height:140px"></div></div>
 
       <!-- upload -->
       <div id="pick" hidden>
@@ -26,13 +26,13 @@
           </div>
           <div id="mode-note"></div>
           <label class="dropzone" id="drop" for="file">
-            <input type="file" id="file" accept="video/mp4,video/quicktime,video/x-msvideo,.mp4,.mov,.avi">
+            <input type="file" id="file" accept="video/mp4,video/quicktime,video/x-msvideo,.mp4,.mov,.avi" disabled>
             <div class="up-ico" id="up-ico"></div>
             <b>Drop a batting clip here</b>
             <p class="muted" style="margin:6px 0 0">or <span style="color:var(--brand);font-weight:600">browse your files</span> · MP4, MOV or AVI up to 50 MB · one stroke (1 to 3 s), or a whole nets video: each shot is found and analysed separately</p>
           </label>
           <input class="plain" id="session" placeholder="Session label (optional), e.g. Nets 30 Oct" maxlength="100" style="margin-top:14px">
-          <div id="msg" style="margin-top:14px"></div>
+          <div id="msg" role="status" aria-live="polite" style="margin-top:14px"></div>
         </div>
         <div class="grid kpis reveal" style="margin-top:18px" id="tips"></div>
       </div>
@@ -41,31 +41,36 @@
       <div class="scan-stage" id="stage">
         <div class="scan-frame"><video id="preview" muted loop playsinline autoplay></video><div class="tint"></div><div class="laser"></div></div>
         <div class="card">
-          <h2>Analysing your clip</h2>
+          <h2 id="processing-title">Uploading your clip</h2>
           <ul class="steps" id="steps">
             <li data-s="0"><span class="st"></span>Uploading clip</li>
             <li data-s="1"><span class="st"></span>Sampling 15 frames</li>
             <li data-s="2"><span class="st"></span>Tracking body pose</li>
-            <li data-s="3"><span class="st" ></span><span id="step3">Recognising the shot</span></li>
-            <li data-s="4"><span class="st"></span><span id="step4">Building heatmaps</span></li>
+            <li data-s="3"><span class="st" ></span><span id="step3">Estimating the shot type</span></li>
+            <li data-s="4"><span class="st"></span><span id="step4">Preparing your report</span></li>
           </ul>
           <div class="bar"><div id="bar"></div></div>
-          <p class="faint small" id="pct" style="margin:8px 0 0">0%</p>
+          <p class="faint small" id="pct" role="status" aria-live="polite" style="margin:8px 0 0">0% uploaded</p>
+          <p class="faint small">Processing progress is not streamed after upload. The steps above are confirmed when your report is ready.</p>
         </div>
       </div>
     </main>
   </div>
+  <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
+  <script src="js/goal-context.js?v=1"></script>
   <script>
     requireLogin();
     sidebar("video.html");
     const $ = id => document.getElementById(id);
     const MAX_MB = 50, OK_TYPES = ["video/mp4", "video/quicktime", "video/x-msvideo", "video/avi"];
     const HELP = { fusion: "Video + pose: uses the picture and your body movement", video: "Video only: the published CricShotNet design",
-                   pose: "Pose only: body movement alone, fastest", fusion3d: "Video + 3D pose: the picture with view-independent 3D body angles",
-                   pose3d: "3D pose only: body movement in 3D, does not depend on the camera angle",
+                   pose: "Pose only: uses estimated body movement", fusion3d: "Video + 3D pose: combines the clip with estimated 3D body movement",
+                   pose3d: "3D pose only: uses estimated 3D body movement",
                    movement: "Movement analysis: skeleton, joint angles over time and the frame where you moved most" };
-    let model = null;
+    let model = null, ready = false, busy = false, statusLoading = false, previewUrl = null;
+    let retestGoal = null;
+    const goalReady = PracticeGoalFlow.load("video").then(context => { retestGoal = context.goal; return context; });
 
     $("up-ico").innerHTML = icon("video");
     $("tips").innerHTML = [
@@ -75,28 +80,42 @@
     ].map(([ic, tone, t, d]) => `<div class="card kpi ${tone}" style="padding:18px"><div class="ico" style="margin-bottom:10px">${icon(ic)}</div><b>${t}</b><p class="muted small" style="margin:4px 0 0">${d}</p></div>`).join("");
     document.querySelectorAll(".steps .st").forEach(s => (s.innerHTML = icon("check")));
 
-    (async () => {
-      const st = await api("/api/video/status");
-      $("loading").remove();
-      $("pick").hidden = false;
-      if (!st.shot_models) {
-        $("mode-note").innerHTML = `<div class="mode-note">${icon("info")}<div><b>Movement analysis</b> is ready now: your skeleton on every frame,
-          joint angles through the shot, the frame where you moved most, and comparison with reference clips.
-          <span class="faint">The shot name and heatmaps are added once the shot models finish training.</span></div></div>`;
-      }
-      $("models").innerHTML = st.models.map(m => `<button type="button" data-k="${m.kind}">${esc(m.label)}</button>`).join("");
-      const pickModel = k => {
-        model = k;
-        const mv = k === "movement";
-        $("step3").textContent = mv ? "Measuring joint angles" : "Recognising the shot";
-        $("step4").textContent = mv ? "Drawing your skeleton" : "Building heatmaps";
-        $("models").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.k === k));
-        $("model-help").textContent = HELP[k] || "";
-      };
-      $("models").querySelectorAll("button").forEach(b => (b.onclick = () => pickModel(b.dataset.k)));
-      pickModel(st.default);
-      revealAll();
-    })().catch(e => toast(e.message, "error"));
+    async function loadStatus() {
+      if (statusLoading) return;
+      statusLoading = true;
+      ready = false;
+      $("loading").hidden = false;
+      $("loading").innerHTML = '<p class="muted">Checking available analysis options…</p><div class="skeleton" style="height:140px"></div>';
+      try {
+        const st = await api("/api/video/status");
+        if (!Array.isArray(st.models) || !st.models.length) throw new Error("No analysis option is available. Please try again.");
+        if (!st.shot_models) {
+          $("mode-note").innerHTML = `<div class="mode-note">${icon("info")}<div><b>Movement analysis</b> is ready now: your skeleton on every frame,
+            joint angles through the shot, the frame where you moved most, and comparison with reference clips.
+            <span class="faint">The shot name and heatmaps are added once the shot models finish training.</span></div></div>`;
+        }
+        $("models").innerHTML = st.models.map(m => `<button type="button" data-k="${m.kind}">${esc(m.label)}</button>`).join("");
+        const pickModel = k => {
+          model = k;
+          const mv = k === "movement";
+          $("step3").textContent = mv ? "Measuring joint angles" : "Estimating the shot type";
+          $("step4").textContent = "Preparing your report";
+          $("models").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.k === k));
+          $("model-help").textContent = HELP[k] || "";
+        };
+        $("models").querySelectorAll("button").forEach(b => (b.onclick = () => pickModel(b.dataset.k)));
+        pickModel(st.models.some(m => m.kind === st.default) ? st.default : st.models[0].kind);
+        ready = true;
+        $("file").disabled = false;
+        $("loading").hidden = true;
+        $("pick").hidden = false;
+        revealAll();
+      } catch (e) {
+        $("loading").innerHTML = `${alertHtml("error", e.message)}<button type="button" class="ghost" id="retry-status" style="margin-top:12px">Try again</button>`;
+        $("retry-status").onclick = loadStatus;
+      } finally { statusLoading = false; }
+    }
+    loadStatus();
 
     const drop = $("drop");
     ["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
@@ -110,18 +129,30 @@
         li.className = s < n ? "done" : s === n ? "active" : "";
       });
     }
-    const setPct = p => { $("bar").style.width = p + "%"; $("pct").textContent = Math.round(p) + "%"; };
+    const setPct = p => { $("bar").style.width = p + "%"; $("pct").textContent = Math.round(p) + "% uploaded"; };
 
-    function start(file) {
+    async function start(file) {
+      if (!ready || busy) return;
+      busy = true;
+      const context = await goalReady;
+      busy = false;
+      if (context.blocked) return;
       $("msg").innerHTML = "";
       const ext = file.name.split(".").pop().toLowerCase();
       if (!OK_TYPES.includes(file.type) && !["mp4", "mov", "avi"].includes(ext))
         return ($("msg").innerHTML = alertHtml("error", "Only MP4, MOV or AVI videos are allowed."));
       if (file.size > MAX_MB * 1024 * 1024) return ($("msg").innerHTML = alertHtml("error", `This file is larger than ${MAX_MB} MB.`));
+      if (!file.size) return ($("msg").innerHTML = alertHtml("error", "This file is empty. Choose a different clip."));
 
-      $("preview").src = URL.createObjectURL(file);
+      busy = true;
+      $("file").disabled = true;
+      $("models").querySelectorAll("button").forEach(b => b.disabled = true);
+      previewUrl = URL.createObjectURL(file);
+      $("preview").src = previewUrl;
       $("pick").hidden = true;
       $("stage").classList.add("on");
+      $("processing-title").textContent = "Uploading your clip";
+      $("bar").parentElement.classList.remove("processing");
       setStep(0); setPct(0);
 
       const form = new FormData();
@@ -132,54 +163,67 @@
 
       const xhr = new XMLHttpRequest();
       xhr.open("POST", "/api/video/analyse");
+      xhr.timeout = 600000;
       xhr.setRequestHeader("Authorization", `Bearer ${getToken()}`);
-      let timer;
-      xhr.upload.onprogress = e => { if (e.lengthComputable) setPct((e.loaded / e.total) * 30); };
+      xhr.upload.onprogress = e => { if (e.lengthComputable) setPct((e.loaded / e.total) * 100); };
       xhr.upload.onload = () => {
-        // Server steps are not streamed: move the indicator gently until the answer arrives.
-        let p = 30;
-        setStep(1);
-        timer = setInterval(() => {
-          p = Math.min(94, p + (94 - p) * 0.05);
-          setPct(p);
-          setStep(p < 45 ? 1 : p < 62 ? 2 : p < 80 ? 3 : 4);
-        }, 150);
+        $("processing-title").textContent = "Processing your clip";
+        document.querySelectorAll("#steps li").forEach(li => { li.className = +li.dataset.s === 0 ? "done" : ""; });
+        $("bar").parentElement.classList.add("processing");
+        $("pct").textContent = "Upload complete. Waiting for your report…";
       };
       xhr.onload = () => {
-        clearInterval(timer);
         let j = {};
         try { j = JSON.parse(xhr.responseText); } catch {}
-        if (xhr.status === 401) return signOut();
+        if (xhr.status === 401) return signOut("expired");
         if (xhr.status !== 200) return fail(typeof j.detail === "string" ? j.detail : "Analysis failed, please try again.");
+        $("bar").parentElement.classList.remove("processing");
         setStep(5); setPct(100);
+        $("processing-title").textContent = "Your report is ready";
+        $("pct").textContent = "Analysis complete";
         if (j.multi) return showShots(j);
-        setTimeout(() => go(`clip.html?id=${j.id}`), reduceMotion ? 0 : 600);
+        setTimeout(() => go(PracticeGoalFlow.resultUrl({ ...j, mode: "video" }, retestGoal)), reduceMotion ? 0 : 600);
       };
-      xhr.onerror = () => { clearInterval(timer); fail("Network error, please try again."); };
+      xhr.onerror = () => fail("Network error, please try again.");
+      xhr.ontimeout = () => fail("This request timed out. Check History for a completed report before trying again.");
       xhr.send(form);
     }
 
     // A long practice video comes back as several shots: list them, each linking to its own result.
     function showShots(j) {
+      resetUpload();
       $("stage").classList.remove("on");
       $("pick").hidden = false; $("file").value = "";
       const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
       $("msg").innerHTML = `<div class="shots-found">
         <div class="sf-head">${icon("check")}<div><b>Found ${j.count} shot${j.count === 1 ? "" : "s"} in your ${j.duration_s} s video</b>
           <small>Each shot was cut out and analysed on its own. Open any of them:</small></div></div>
-        <div class="sf-list">${j.analyses.map((a, k) => `<a class="sf-item" href="clip.html?id=${a.id}">
+        <div class="sf-list">${j.analyses.map((a, k) => `<a class="sf-item" href="${PracticeGoalFlow.resultUrl({ ...a, mode: "video" }, retestGoal)}">
           <span class="sf-n">${k + 1}</span><div><b>Shot ${k + 1}</b><small>at ${fmt(j.shots[k].peak_s)} · body tracked ${a.summary.tracked_frames ?? "–"}/15</small></div>
           <span class="chip info">${esc(a.shot || "Movement")}</span>${icon("arrow")}</a>`).join("")}</div></div>`;
       toast(`Found ${j.count} shots`, "ok");
     }
 
     function fail(msg) {
+      resetUpload();
       $("stage").classList.remove("on");
       $("pick").hidden = false;
       $("file").value = "";
       $("msg").innerHTML = alertHtml("error", msg);
       toast(msg, "error");
     }
+
+    function resetUpload() {
+      busy = false;
+      $("bar").parentElement.classList.remove("processing");
+      $("file").disabled = !ready;
+      $("models").querySelectorAll("button").forEach(b => b.disabled = false);
+      $("preview").pause();
+      $("preview").removeAttribute("src");
+      $("preview").load();
+      if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+    }
+    addEventListener("pagehide", resetUpload);
   </script>
 </body>
 </html>

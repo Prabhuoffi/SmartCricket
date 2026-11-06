@@ -44,13 +44,31 @@ for ci, cls in enumerate(sc.CLASSES):
         for p in folder.iterdir():
             z.write(p, f"{cls}/{p.name}")
 
-nb = json.loads((HERE / "SmartCricket_Train.ipynb").read_text())
+# ---- extra clips: one new shot with enough clips (trained) and one with too few (skipped)
+for shot, n, ci in (("Switch Hit", 45, 15), ("Leave", 5, 16)):
+    folder = TMP / "drive" / "extra_shots" / shot / "match01"
+    folder.mkdir(parents=True)
+    for k in range(n):
+        vw = cv2.VideoWriter(str(folder / f"clip_{k:03d}.mp4"), cv2.VideoWriter_fourcc(*"mp4v"), 25, (320, 180))
+        for t in range(25):
+            f = np.full((180, 320, 3), 40, np.uint8)
+            cv2.circle(f, (40 + ci * 15, 30 + t * 5), 12, (255, 255 - ci * 15, 60), -1)
+            vw.write(np.clip(f + rng.integers(0, 20, f.shape), 0, 255).astype(np.uint8))
+        vw.release()
+    if shot == "Switch Hit":   # several sources, so the shot reaches every split
+        for k in range(n):
+            m = folder.parent / f"match{k % 9:02d}"
+            m.mkdir(exist_ok=True)
+            (folder / f"clip_{k:03d}.mp4").rename(m / f"clip_{k:03d}.mp4")
+
+NB = sys.argv[1] if len(sys.argv) > 1 else "SmartCricket_Train.ipynb"   # e.g. SmartCricket_Train_FineTune.ipynb
+nb = json.loads((HERE / NB).read_text())
 cells = [c["source"] for c in nb["cells"] if c["cell_type"] == "code"]
 
 REPLACE = {
     "!nvidia-smi --query-gpu=name,memory.total --format=csv\n": "",
     "!pip -q install mediapipe gdown\n": "",
-    "from google.colab import drive\ndrive.mount('/content/drive')\n": "",
+    "from google.colab import drive\n": "class drive:\n    mount = staticmethod(lambda *a, **k: None)\n",
     "OUT = Path('/content/drive/MyDrive/SmartCricket')": f"OUT = Path('{TMP}/drive')",
     "DATASET_IN_MY_DRIVE = None": f"DATASET_IN_MY_DRIVE = '{src}'",
     "RAW = Path('/content/raw'); VIDEOS = Path('/content/videos')": f"RAW = Path('{TMP}/raw'); VIDEOS = Path('{TMP}/videos')",
@@ -63,9 +81,20 @@ REPLACE = {
     "speed = pd.DataFrame({'GPU (ms)': timed('cuda'), 'CPU (ms)': timed('cpu')})": "speed = pd.DataFrame({'CPU (ms)': timed('cpu')})",
     "def train(kind, seed, epochs=40, patience=6": "def train(kind, seed, epochs=8, patience=6",
     "plt.show()": "plt.close('all')",
+    "DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'":
+        "DEVICE = 'mps' if torch.backends.mps.is_available() else 'cpu'",   # Apple GPU: much faster than the CPU
+    "FT_EPOCHS, FT_FRAMES = 4, 5": "FT_EPOCHS, FT_FRAMES = 1, 2",
+    "MIN_CLIPS = 40": "MIN_CLIPS = 10",   # the fake dataset has 14 clips per shot
+    # macOS cannot fork a process that has MediaPipe/PyTorch loaded (Colab's Linux can): run pose in-process
+    "    with ProcessPoolExecutor(workers, mp_context=multiprocessing.get_context('fork')) as ex:\n"
+    "        res = list(ex.map(pose_worker, chunks))": "    res = list(map(pose_worker, chunks))",
+    "num_workers=2, multiprocessing_context='fork'": "num_workers=0",
 }
 
-g = {"__name__": "__main__", "display": print}
+import __main__  # noqa: E402  cells run in __main__, as in Colab, so worker processes can find their functions
+
+g = __main__.__dict__
+g["display"] = print
 for i, src_code in enumerate(cells):
     if src_code.startswith("%%writefile"):
         shutil.copy(HERE / "sc_common.py", TMP / "sc_common.py")

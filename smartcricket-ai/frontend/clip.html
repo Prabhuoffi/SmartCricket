@@ -85,7 +85,7 @@
           <div><h2 style="margin-bottom:4px">Compare with a reference clip</h2>
             <p class="muted small" style="margin:0">Your joint angles are lined up with a model player's using Dynamic Time Warping, so different speeds still match.</p></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <select class="select" id="refs"></select>
+            <select class="select" id="refs" aria-label="Reference clip"></select>
             <button id="cmp-btn"></button>
           </div>
         </div>
@@ -109,7 +109,7 @@
               <input type="range" id="aslider" min="0" value="0" style="width:100%;margin-top:10px" aria-label="Aligned step">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;gap:10px;flex-wrap:wrap">
                 <b class="small">Angle over the stroke</b>
-                <select class="select" id="joint" style="min-width:160px;padding:6px 10px"></select>
+                <select class="select" id="joint" aria-label="Joint to compare" data-dropdown-compact style="min-width:160px;padding:6px 10px"></select>
               </div>
               <div style="position:relative;height:200px;margin-top:8px"><canvas id="achart"></canvas></div>
             </div>
@@ -119,6 +119,7 @@
       </div>
     </main>
   </div>
+  <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
   <script src="js/coach.js?v=48"></script>
   <script>
@@ -194,7 +195,8 @@
       countUp($("conf"), pct, { suffix: "%", duration: 1400 });
       $("chips").innerHTML = `<span class="chip info">${esc(S.model_label)}</span>` +
         `<span class="chip ${A.uncertain ? "low" : "ok"}">${A.uncertain ? "uncertain" : "confident"}</span>` +
-        `<span class="chip off" title="Temperature used to calibrate the confidence">T = ${S.temperature}</span>`;
+        `<span class="chip off" title="Temperature used to calibrate the confidence">T = ${S.temperature}</span>` +
+        (S.family ? `<span class="chip ok" title="Shot family: the probabilities of shots with the same movement added together">Family: ${esc(S.family.family)} ${(S.family.prob * 100).toFixed(0)}%</span>` : "");
       $("top3").innerHTML = `<b class="small">Top 3 shots</b><div style="height:10px"></div>` + A.top3.map((p, i) => `
         <div class="prob ${i === 0 ? "first" : ""}"><div class="row"><span>${esc(p.shot)}</span><span>${(p.prob * 100).toFixed(1)}%</span></div>
         <div class="track"><div class="fill" data-w="${p.prob * 100}"></div></div></div>`).join("");

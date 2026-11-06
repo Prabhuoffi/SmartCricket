@@ -16,7 +16,8 @@
           <p class="muted">Your AI Coach builds three drills a day from your own photos and clips.</p>
         </div>
         <div class="reveal" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <a class="btn ghost" href="live.html" id="live-free"></a>
+          <button type="button" class="ghost" id="update-checkin" aria-controls="feed" hidden>Update check-in</button>
+          <a class="btn ghost" href="live.html" id="live-free" hidden></a>
           <span class="chip info" id="diff-chip"></span>
         </div>
       </div>
@@ -37,7 +38,7 @@
         <!-- coach -->
         <div class="card reveal coach-card">
           <div id="coach-head"></div>
-          <div class="chat feed-chat" id="feed"></div>
+          <div class="chat feed-chat" id="feed" tabindex="-1" aria-label="Training coach conversation"></div>
           <form class="chat-form" id="chat-form">
             <input class="plain" id="q" placeholder="Ask about your training…" maxlength="500" autocomplete="off">
             <button id="send" aria-label="Send"></button>
@@ -54,10 +55,13 @@
       </div>
     </main>
   </div>
+  <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
+  <script src="js/goal-context.js?v=1"></script>
   <script>
     requireLogin();
     sidebar("training.html");
+    PracticeGoalFlow.load();
     const $ = id => document.getElementById(id);
     $("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
     $("send").innerHTML = icon("arrow");
@@ -65,7 +69,8 @@
     $("coach-head").innerHTML = coachHeader("Today's training");
     revealAll();
     const first = (store.get(NAME_KEY) || "Player").split(" ")[0];
-    let T;  // today's payload
+    let T, checkinInProgress = false;  // today's payload
+    const pendingDrills = new Set();
     const LIVE = ["knee_bend", "hip_hinge", "level_shoulders", "high_backlift", "elbow_lead", "balance_hold"];   // counted live on live.html
 
     // ------------------------------------------------------------ hero: level, XP, streak, today ring
@@ -89,39 +94,49 @@
 
     // ------------------------------------------------------------ plan
     function drills() {
-      $("diff-chip").innerHTML = `${icon("bolt")} ${T.rest_day ? "Rest day" : `${T.difficulty.label} level`}`;
-      $("diff-why").textContent = T.rest_day ? "Recovery comes first today." : T.difficulty.why;
+      $("update-checkin").hidden = !T.checkin || checkinInProgress;
+      $("live-free").hidden = !T.checkin || T.rest_day;
+      $("diff-chip").innerHTML = `${icon("bolt")} ${!T.checkin ? "Plan preview" : T.rest_day ? "Rest day" : `${T.difficulty.label} level`}`;
+      $("diff-why").textContent = !T.checkin ? "Complete the coach's check-in to confirm today's plan before starting your drills." : T.rest_day ? "Recovery comes first today." : T.difficulty.why;
       $("drills").innerHTML = T.plan.map((d, i) => `
         <div class="drill${d.done ? " done" : ""}${d.code === "rest" ? " rest" : ""}" data-id="${d.id}" style="animation-delay:${i * 90}ms">
-          <button class="tick" aria-label="Mark ${esc(d.title)} as ${d.done ? "not done" : "done"}" aria-pressed="${d.done}">${icon("check")}</button>
+          <button class="tick" aria-label="Mark ${esc(d.title)} as ${d.done ? "not done" : "done"}" aria-pressed="${d.done}"${!T.checkin || pendingDrills.has(d.id) ? " disabled" : ""}>${icon("check")}</button>
           <div class="dr-body">
             <div class="dr-top"><b>${esc(d.title)}</b><span class="dose">${esc(d.dose)}</span></div>
             <p>${esc(d.how)}</p>
             <small class="why">${icon("target")}${esc(d.reason)}</small>
-            ${LIVE.includes(d.code) && !d.done ? `<a class="dr-live" href="live.html?drill=${d.id}"><span class="rec"></span>Do it live with camera</a>` : ""}
+            ${T.checkin && !T.rest_day && LIVE.includes(d.code) && !d.done ? `<a class="dr-live" href="live.html?drill=${d.id}"><span class="rec"></span>Do it live with camera</a>` : ""}
           </div></div>`).join("");
       $("drills").querySelectorAll(".drill").forEach(el => el.querySelector(".tick").onclick = () => toggle(el));
     }
     async function toggle(el) {
       const id = +el.dataset.id, d = T.plan.find(x => x.id === id), btn = el.querySelector(".tick");
+      if (!T.checkin || !d || pendingDrills.has(id)) return;
+      pendingDrills.add(id);
       btn.disabled = true;
       try {
         const r = await api(`/api/train/drills/${id}`, { method: "POST", body: { done: !d.done } });
         d.done = r.done;
-        el.classList.toggle("done", d.done);
-        btn.setAttribute("aria-pressed", d.done);
+        T.status = r.status;
         if (d.done) xpFloat(btn, 15);
+        pendingDrills.delete(id);
+        drills();
         hero(r.status); refreshLevel(r.status);
         if (r.level_up) celebrate(r.status.level, r.status.level_name);
         else if (d.done && r.status.today.drills_done === r.status.today.drills_total) {
           coachSay(`All ${r.status.today.drills_total} drills done today. Brilliant work, ${first}! Today goes green on your calendar.`);
         }
       } catch (e) { toast(e.message, "error"); }
-      btn.disabled = false;
+      finally { pendingDrills.delete(id); btn.disabled = false; }
     }
 
     // ------------------------------------------------------------ coach feed
     const feed = $("feed");
+    $("update-checkin").onclick = () => {
+      checkinFlow();
+      feed.focus({ preventScroll: true });
+      feed.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+    };
     function say(role, html, cls = "") {
       const m = document.createElement("div");
       m.className = `msg ${role} ${cls}`;
@@ -141,11 +156,15 @@
     const later = (fn, ms = 550) => setTimeout(fn, reduceMotion ? 0 : ms);
 
     function checkinFlow() {
-      coachSay(`${greeting()}, ${first}! Before we train, three quick questions.`);
+      if (checkinInProgress) return;
+      checkinInProgress = true;
+      $("update-checkin").hidden = true;
+      const updating = Boolean(T.checkin);
+      coachSay(updating ? "Let's update today's check-in. Three quick questions, then your plan will adjust to how you feel now." : `${greeting()}, ${first}! Before we train, three quick questions.`);
       const ans = {};
       later(() => {
         coachSay("How many balls did you face yesterday?");
-        const box = say("coach", `<form class="balls"><input class="plain" type="number" min="0" max="2000" placeholder="e.g. 60" aria-label="Balls faced yesterday">
+        const box = say("coach", `<form class="balls"><input class="plain" type="number" min="0" max="2000" value="${T.checkin?.balls_faced ?? ""}" placeholder="e.g. 60" aria-label="Balls faced yesterday">
           <button>Next</button></form><button type="button" class="ghost none">I didn't bat</button>`, "choices");
         const next = v => { box.remove(); userSay(v === 0 ? "I didn't bat" : `${v} balls`); ans.balls_faced = v; later(soreness); };
         box.querySelector("form").onsubmit = e => {
@@ -162,26 +181,33 @@
       }
       function feeling() {
         coachSay("And how do you feel overall?");
-        choices([["Tired", 1], ["Low", 2], ["OK", 3], ["Good", 4], ["Great", 5]], async v => {
+        choices([["Tired", 1], ["Low", 2], ["OK", 3], ["Good", 4], ["Great", 5]], v => {
           ans.feeling = v;
-          const t = typing();
-          try {
-            T = await api("/api/train/checkin", { method: "POST", body: ans });
-            t.remove();
-            xpFloat($("feed"), 5);
-            afterCheckin(true);
-            drills(); hero(T.status); refreshLevel(T.status);
-          } catch (e) { t.remove(); coachSay(e.message); }
+          saveCheckin();
         });
+      }
+      async function saveCheckin() {
+        const t = typing();
+        try {
+          T = await api("/api/train/checkin", { method: "POST", body: ans });
+          t.remove();
+          checkinInProgress = false;
+          if (!updating) xpFloat($("feed"), 5);
+          afterCheckin(true, updating);
+          drills(); hero(T.status); refreshLevel(T.status);
+        } catch (e) {
+          t.remove(); coachSay(e.message);
+          choices([["Try saving check-in again", null]], saveCheckin);
+        }
       }
     }
 
-    function afterCheckin(fresh) {
+    function afterCheckin(fresh, updated = false) {
       const c = T.checkin;
       if (!fresh) coachSay(`You checked in today: ${c.balls_faced ?? 0} balls yesterday, ${c.soreness === "none" ? "no soreness" : c.soreness === "mild" ? "a little sore" : "needing rest"}.`);
       if (T.rest_day) coachSay("Your body comes first, so today is a rest day: gentle walking and stretching only. If the soreness continues, please see a doctor or physio.");
-      else if (fresh) coachSay(`Thanks! Your plan is ready at ${T.difficulty.label.toLowerCase()} level. ${T.difficulty.why} Tick each drill as you finish it.`);
-      later(reflection, 700);
+      else if (fresh) coachSay(`${updated ? "Check-in updated." : "Thanks!"} Your plan is ready at ${T.difficulty.label.toLowerCase()} level. ${T.difficulty.why} Tick each drill as you finish it.`);
+      if (!updated) later(reflection, 700);
     }
 
     function reflection() {
