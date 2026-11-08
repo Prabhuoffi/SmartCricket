@@ -1,18 +1,23 @@
 """Training page and progress page: daily plan, check-in, quiz, coach questions, weekly report (module M9)."""
 import logging
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from .. import coach, trainer
 from ..auth import current_user
+from ..config import settings
 from ..db import get_db
-from ..models import DailyLog, LiveSession, PlanDrill, QuizAnswer, Reflection, TrainingChat, User
+from ..models import DailyLog, LiveMoment, LiveSession, PlanDrill, QuizAnswer, Reflection, TrainingChat, User
+from ..serialize import timestamp
+from ..storage import save_upload
 
 router = APIRouter(prefix="/api/train", tags=["training"])
 log = logging.getLogger("smartcricket")
@@ -130,7 +135,7 @@ def answer_quiz(body: Choice, user: User = Depends(current_user), db: Session = 
 
 @router.post("/live-sessions", status_code=201)
 def save_live(body: LiveIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    """Save the summary of a live-mirror session. Only numbers are stored, never camera images."""
+    """Save the measured summary; a chosen frame can be attached separately."""
     c = trainer.load(user, db)
     d = None
     if body.drill_id is not None:
@@ -152,6 +157,91 @@ def save_live(body: LiveIn, user: User = Depends(current_user), db: Session = De
     c.live.append(row)
     st = trainer.status(c)
     return {"id": row.id, "xp": trainer.XP_RULES["live"], "status": st, "level_up": st["level"] > before}
+
+
+@router.get("/live-sessions")
+def live_history(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Every saved live session, with a private link to its captured image when present."""
+    rows = db.execute(
+        select(LiveSession, LiveMoment.session_id)
+        .outerjoin(LiveMoment, LiveMoment.session_id == LiveSession.id)
+        .where(LiveSession.user_id == user.id)
+        .order_by(LiveSession.created_at.desc(), LiveSession.id.desc())
+    ).all()
+    return {"sessions": [{"id": session.id, "title": session.title, "day": session.day.isoformat(),
+                           "created_at": timestamp(session.created_at), "duration_s": session.duration_s,
+                           "reps": session.reps, "hold_s": session.hold_s, "completed": session.completed,
+                           "best_moment_url": f"/api/train/live-sessions/{session.id}/best-moment" if moment_id else None}
+                          for session, moment_id in rows]}
+
+
+def _owned_live(session_id: int, user: User, db: Session) -> LiveSession:
+    session = db.get(LiveSession, session_id)
+    if not session or session.user_id != user.id:
+        raise HTTPException(404, "Live session not found")
+    return session
+
+
+@router.put("/live-sessions/{session_id}/best-moment")
+async def save_live_moment(session_id: int, file: UploadFile = File(...),
+                           metric: Literal["knee", "hip", "elbow", "shoulder", "tilt", "shot_motion"] | None = Form(None),
+                           value: float | None = Form(None, ge=0, le=180),
+                           user: User = Depends(current_user), db: Session = Depends(get_db)):
+    _owned_live(session_id, user, db)
+    path = await save_upload(file, "image")
+    moment = db.scalar(select(LiveMoment).where(LiveMoment.session_id == session_id))
+    old_path = Path(moment.file_path) if moment else None
+    try:
+        if moment:
+            moment.file_path = str(path)
+            moment.metric = metric
+            moment.value = value
+        else:
+            moment = LiveMoment(session_id=session_id, file_path=str(path), metric=metric, value=value)
+            db.add(moment)
+        db.commit()
+    except Exception:
+        db.rollback()
+        path.unlink(missing_ok=True)
+        raise
+    if old_path:
+        old_path.unlink(missing_ok=True)
+    return {"session_id": session_id, "image_url": f"/api/train/live-sessions/{session_id}/best-moment",
+            "metric": metric, "value": value}
+
+
+@router.get("/live-sessions/{session_id}/best-moment")
+def get_live_moment(session_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    _owned_live(session_id, user, db)
+    moment = db.scalar(select(LiveMoment).where(LiveMoment.session_id == session_id))
+    if not moment or not Path(moment.file_path).is_file():
+        raise HTTPException(404, "Best moment not found")
+    return FileResponse(moment.file_path, media_type="image/jpeg" if Path(moment.file_path).suffix.lower() in (".jpg", ".jpeg") else "image/png")
+
+
+@router.delete("/live-sessions/{session_id}/best-moment", status_code=204)
+def delete_live_moment(session_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    _owned_live(session_id, user, db)
+    moment = db.scalar(select(LiveMoment).where(LiveMoment.session_id == session_id))
+    if not moment:
+        raise HTTPException(404, "Best moment not found")
+    path = Path(moment.file_path)
+    db.delete(moment)
+    db.commit()
+    path.unlink(missing_ok=True)
+
+
+@router.delete("/live-sessions/{session_id}", status_code=204)
+def delete_live_session(session_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    session = _owned_live(session_id, user, db)
+    moment = db.scalar(select(LiveMoment).where(LiveMoment.session_id == session_id))
+    path = Path(moment.file_path) if moment else None
+    if moment:
+        db.delete(moment)
+    db.delete(session)
+    db.commit()
+    if path:
+        path.unlink(missing_ok=True)
 
 
 @router.post("/reflection")
@@ -183,6 +273,23 @@ async def chat(body: Message, user: User = Depends(current_user), db: Session = 
     return {"reply": answer}
 
 
+@router.get("/coach")
+def coach_page(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """The AI Coach tab: the conversation so far and a short view of what the coach knows about the player."""
+    c = trainer.load(user, db)
+    chat_rows = db.scalars(select(TrainingChat).where(TrainingChat.user_id == user.id)
+                           .order_by(TrainingChat.id.desc()).limit(60)).all()[::-1]
+    return {"chat": [{"role": m.role, "text": m.text, "at": timestamp(m.created_at)} for m in chat_rows],
+            "context": trainer.coach_context(db, c), "configured": bool(settings.llm_api_key)}
+
+
+@router.delete("/chat", status_code=204)
+def clear_chat(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Start a new conversation with the coach. Plans, check-ins and results are kept."""
+    db.execute(delete(TrainingChat).where(TrainingChat.user_id == user.id))
+    db.commit()
+
+
 @router.get("/progress")
 def progress(user: User = Depends(current_user), db: Session = Depends(get_db)):
     c = trainer.load(user, db)
@@ -194,8 +301,12 @@ def progress(user: User = Depends(current_user), db: Session = Depends(get_db)):
         w["summary"] = reports.get(w["week_start"])
     days = trainer.active_days(c)
     st = trainer.status(c)
+    recent_ids = [s.id for s in c.live[-8:]]
+    moment_ids = set(db.scalars(select(LiveMoment.session_id).where(LiveMoment.session_id.in_(recent_ids)))) if recent_ids else set()
     live = [{"id": s.id, "title": s.title, "day": s.day.isoformat(), "duration_s": s.duration_s, "reps": s.reps,
-             "hold_s": s.hold_s, "completed": s.completed, "stats": s.stats or {}} for s in reversed(c.live[-8:])]
+             "hold_s": s.hold_s, "completed": s.completed, "stats": s.stats or {},
+             "best_moment_url": f"/api/train/live-sessions/{s.id}/best-moment" if s.id in moment_ids else None}
+            for s in reversed(c.live[-8:])]
     return {"status": st, "weeks": weeks, "xp_rules": trainer.XP_RULES, "live_sessions": live,
             "difficulty": trainer.difficulty(c, c.day),
             "totals": {"drills_done": sum(d.done for d in c.drills), "checkins": len(c.logs),

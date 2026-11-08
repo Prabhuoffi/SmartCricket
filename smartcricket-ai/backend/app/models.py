@@ -172,7 +172,7 @@ class TrainingChat(Base):
 
 
 class LiveSession(Base):
-    """A saved live-mirror session: what was practised, for how long, and the best moments (no images)."""
+    """A saved live-mirror session with its measured practice summary."""
     __tablename__ = "live_sessions"
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
@@ -184,6 +184,17 @@ class LiveSession(Base):
     hold_s: Mapped[int] = mapped_column(Integer, default=0)
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
     stats: Mapped[dict | None] = mapped_column(JsonType, nullable=True)   # best angle, ghost match, stroke match
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class LiveMoment(Base):
+    """One chosen camera frame for a saved live session, visible only to its player."""
+    __tablename__ = "live_moments"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("live_sessions.id", ondelete="CASCADE"), unique=True, index=True)
+    file_path: Mapped[str] = mapped_column(Text)
+    metric: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    value: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -220,3 +231,21 @@ class PlayerProfile(Base):
     focus: Mapped[str] = mapped_column(String(120), default="")
     notes: Mapped[str] = mapped_column(Text, default="")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
+
+
+class Feedback(Base):
+    """A player's feedback about training or the app, read by administrators."""
+    __tablename__ = "feedback"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    category: Mapped[str] = mapped_column(String(20))  # training | coach | app | bug | idea
+    rating: Mapped[int] = mapped_column(Integer)  # 1 (poor) to 5 (great)
+    message: Mapped[str] = mapped_column(Text)
+    tags: Mapped[list | None] = mapped_column(JsonType, nullable=True)
+    page: Mapped[str] = mapped_column(String(60), default="")
+    status: Mapped[str] = mapped_column(String(10), default="new")  # new | read
+    reply: Mapped[str | None] = mapped_column(Text, nullable=True)
+    replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+    user: Mapped[User] = relationship()

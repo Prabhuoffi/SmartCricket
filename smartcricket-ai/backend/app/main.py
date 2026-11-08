@@ -8,7 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from . import auth
 from .config import settings
 from .db import Base, engine
-from .routers import admin, analyses, coach, dashboard, image, practice, practice_reports, reports, train, video
+from .routers import (admin, analyses, coach, dashboard, feedback, image, insights, practice, practice_reports, profile,
+                      reports, train, video)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -35,16 +36,25 @@ async def revalidate_frontend(request, call_next):
 
 # Player-only areas: an administrator account gets 403 here (Section 4.1, user classes).
 for r in (image.router, analyses.router, dashboard.router, reports.router, coach.router, train.router,
-          practice.router, practice_reports.router):
+          practice.router, practice_reports.router, profile.router, insights.router):
     app.include_router(r, dependencies=[Depends(auth.current_player)])
 # Shared (mixed per endpoint) and admin areas.
-for r in (auth.router, video.router, admin.router):
+for r in (auth.router, video.router, admin.router, feedback.router):
     app.include_router(r)
 
 
 @app.get("/api/health")
 def health():
     return {"status": "ok", "coach_configured": bool(settings.llm_api_key)}
+
+
+@app.get("/api/live/pose-model")
+def live_pose_model(_: auth.User = Depends(auth.current_player)):
+    """Serve the installed pose task to the browser without an external model download."""
+    model = settings.model_dir / "pose_landmarker_full.task"
+    if not model.is_file():
+        raise HTTPException(503, "Live pose model is missing. Install pose_landmarker_full.task in models/.")
+    return FileResponse(model, media_type="application/octet-stream")
 
 
 # ---------------------------------------------------------------- phone mode (run_phone.py: https on the local Wi-Fi)

@@ -111,14 +111,30 @@ def register(body: RegisterIn, db: Session = Depends(get_db)):
     return TokenOut(token=make_token(user.id), name=user.name, role=user.role)
 
 
-@router.post("/login", response_model=TokenOut)
-def login(body: LoginIn, db: Session = Depends(get_db)):
+def authenticate(body: LoginIn, db: Session) -> User:
+    """Check credentials and configured roles before a client-specific token is issued."""
     user = db.scalar(select(User).where(User.email == body.email.lower()))
     if user is None or not verify_password(body.password, user.password_hash):
         raise HTTPException(401, "Email or password is incorrect")
     if user.email in ADMINS and user.role != "admin":  # promote accounts added to ADMIN_EMAILS later
         user.role = "admin"
         db.commit()
+    return user
+
+
+@router.post("/login", response_model=TokenOut)
+def login(body: LoginIn, db: Session = Depends(get_db)):
+    user = authenticate(body, db)
+    return TokenOut(token=make_token(user.id), name=user.name, role=user.role)
+
+
+@router.post("/player/login", response_model=TokenOut)
+def player_login(body: LoginIn, db: Session = Depends(get_db)):
+    """The mobile app accepts players only; admin accounts use the website."""
+    user = authenticate(body, db)
+    if user.role != "player":
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "This app is for players. Please use the admin website.")
     return TokenOut(token=make_token(user.id), name=user.name, role=user.role)
 
 

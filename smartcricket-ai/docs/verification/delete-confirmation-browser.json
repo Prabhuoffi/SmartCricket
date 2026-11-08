@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-06",
+  "context": "Synthetic browser fixtures and intercepted API requests only; no saved user data was deleted.",
+  "native_browser_dialogs": [],
+  "cancel_sends_no_delete": true,
+  "escape": true,
+  "backdrop": true,
+  "close_button": true,
+  "cancel_default_focus": true,
+  "focus_restored": true,
+  "double_submit_blocked": true,
+  "busy_cannot_dismiss": true,
+  "error_stays_open": true,
+  "retry_success": true,
+  "photo_video_goal_reference_flows": true,
+  "mobile": {
+    "client": 390,
+    "scroll": 390,
+    "left": 16,
+    "right": 374,
+    "modal_client": 356,
+    "modal_scroll": 356
+  },
+  "mocked_delete_requests": [
+    "/api/analyses/990001",
+    "/api/analyses/990001",
+    "/api/analyses/990002",
+    "/api/practice/goals/990003",
+    "/api/admin/references/990004"
+  ],
+  "unexpected_mutations": [],
+  "unexpected_script_exceptions": []
+}

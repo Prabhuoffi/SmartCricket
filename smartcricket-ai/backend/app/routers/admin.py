@@ -178,7 +178,8 @@ def overview(_: User = Depends(current_admin), db: Session = Depends(get_db)):
     return {
         "totals": {
             "players": len(users),
-            "active_week": sum(1 for u in users if per_user[u.id]["last"] and aware(per_user[u.id]["last"]) >= week_ago),
+            "active_week": sum(1 for p in players if p["last_active"]
+                               and datetime.fromisoformat(p["last_active"]) >= week_ago),
             "analyses": len(rows),
             "photos": sum(p["photos"] for p in players),
             "videos": sum(p["videos"] for p in players),

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SmartCricket AI: Live drill</title>
+  <title>SmartCricket AI: Live analysis</title>
   <link rel="stylesheet" href="css/style.css?v=48">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
@@ -13,13 +13,13 @@
       <div class="page-head">
         <div class="reveal">
           <a href="training.html" class="small" style="font-weight:600">← Today's training</a>
-          <h1 style="margin-top:6px" id="title">Live mirror</h1>
-          <p class="muted" id="sub">Your camera and pose tracking run on this device. Nothing is uploaded.</p>
+          <h1 style="margin-top:6px" id="title">Live analysis</h1>
+          <p class="muted" id="sub">Pose tracking stays on this device. Saving a session uploads its best clear frame.</p>
         </div>
         <span class="chip ok reveal" id="privacy"></span>
       </div>
 
-      <section class="card reveal" id="live-state" aria-live="polite"><p class="muted">Checking today's training plan…</p></section>
+      <section class="card reveal" id="live-state" aria-live="polite"><p class="muted">Preparing live analysis…</p></section>
       <div class="live-grid" id="live-workspace" hidden>
         <!-- camera, controls and live angles -->
         <div class="live-main">
@@ -27,7 +27,7 @@
           <div class="cam-box" id="cam-box">
             <video id="video" playsinline muted></video>
             <canvas id="overlay"></canvas>
-            <div class="cam-msg" id="cam-msg"><span class="spinner"></span><b>Loading the pose model…</b><small>About 6 MB, only the first time.</small></div>
+            <div class="cam-msg" id="cam-msg"><span class="spinner"></span><b>Preparing pose tracking…</b><small>You can start the camera while this loads.</small></div>
             <span class="cam-fps" id="fps" hidden></span>
             <div class="cam-hint" id="hint" hidden></div>
             <div class="heard" id="heard" hidden></div>
@@ -35,10 +35,8 @@
           <div class="cam-actions">
             <span class="act-group"><button id="start" disabled></button><button class="ghost" id="reset"></button></span>
             <span class="act-group"><button class="ghost icon-only" id="voice" aria-label="Voice coach"></button><button class="ghost icon-only" id="mic" aria-label="Voice commands"></button></span>
-            <button class="ghost" id="moment" disabled></button>
             <span class="faint small" id="cam-note">Stand 2 to 3 metres back, side-on, with your whole body in view.</span>
           </div>
-          <div class="moment-msg" id="moment-msg" hidden></div>
           <div class="session-sum" id="session" hidden></div>
         </div>
 
@@ -55,12 +53,19 @@
             <span class="eyebrow-s" id="goal-eyebrow">Drill</span>
             <h2 id="goal-title" style="margin:0 0 6px">Free practice</h2>
             <p class="muted small" id="goal-how" style="margin:0"></p>
-            <div class="goal-ring">
+            <div class="goal-ring" id="goal-ring">
               <svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" class="gr-bg"/><circle cx="60" cy="60" r="52" class="gr-fg" id="ring"/></svg>
               <div><b id="count">0</b><span id="count-of">reps</span></div>
             </div>
             <div class="goal-rule" id="rule"></div>
             <button id="done" disabled style="width:100%;margin-top:12px"></button>
+          </div>
+          <div class="card reveal shot-guide-card">
+            <span class="eyebrow-s">Ask the coach</span>
+            <h2 style="margin:5px 0 8px">How do I play a shot?</h2>
+            <p class="muted small" style="margin:0 0 12px">Say “how do I play a hook shot?” or choose a name. The steps and movement illustration play here.</p>
+            <div class="shot-guide-search"><input id="shot-guide-query" type="text" placeholder="Try front foot, hook, cover drive…" aria-label="Cricket shot name"><button id="shot-guide-ask" type="button">Show</button></div>
+            <div id="shot-guide-result" aria-live="polite" hidden></div>
           </div>
           <div class="card reveal recog-card">
             <div class="card-head" style="margin-bottom:8px"><div><span class="eyebrow-s">Shot recognition</span><h2>What shot did I play?</h2></div></div>
@@ -94,11 +99,13 @@
   </div>
   <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
+  <script src="js/shot-motion.js?v=1"></script>
+  <script src="js/shot-guide.js?v=1"></script>
   <script type="module">
     requireLogin();
-    sidebar("training.html");
+    sidebar("live.html");
     const $ = id => document.getElementById(id);
-    $("privacy").innerHTML = `${icon("shield")} Runs on your device`;
+    $("privacy").innerHTML = `${icon("shield")} Local pose tracking`;
     $("start").innerHTML = `${icon("play")} Start camera`;
     $("reset").innerHTML = `${icon("compare")} Reset count`;
     $("done").innerHTML = `${icon("check")} Mark drill done`;
@@ -137,7 +144,18 @@
       liveNotice("Take a recovery day", "Leave batting drills for another day and open your recovery plan.");
     }
 
+    function openWorkspace() {
+      liveAllowed = true;
+      $("live-state").hidden = true;
+      $("live-workspace").hidden = false;
+      $("start").disabled = false;
+      paintGoal();
+      return true;
+    }
+
     const trainingReady = (async () => {
+      // A sidebar visit is free camera analysis. Only a linked daily drill needs a check-in.
+      if (!params.has("drill")) return openWorkspace();
       const T = await api("/api/train/today");
       if (T.rest_day) {
         recoveryNotice();
@@ -147,8 +165,8 @@
         liveNotice("Complete today's check-in first", "Tell your coach how you feel before starting the camera. Your plan will then reflect your soreness and energy today.");
         return false;
       }
-      drill = params.has("drill") ? T.plan.find(d => d.id === drillId) || null : null;
-      if (params.has("drill") && !drill) {
+      drill = T.plan.find(d => d.id === drillId) || null;
+      if (!drill) {
         liveNotice("This drill is no longer in today's plan", "The link may be from an earlier session or a changed check-in. Open Training to choose a current drill.");
         return false;
       }
@@ -156,12 +174,7 @@
         rule = RULES[drill.code] || null;
         target = !rule ? 0 : rule.type === "reps" ? drill.amount : (rule.seconds ? rule.seconds(drill.amount) : drill.amount);
       }
-      liveAllowed = true;
-      $("live-state").hidden = true;
-      $("live-workspace").hidden = false;
-      $("start").disabled = false;
-      paintGoal();
-      return true;
+      return openWorkspace();
     })().catch(e => {
       liveNotice("Your training plan could not be checked", e.message, true);
       return false;
@@ -169,9 +182,11 @@
 
     function paintGoal() {
       if (!drill) {
-        $("goal-title").textContent = "Free practice";
+        $("goal-eyebrow").textContent = "Camera session";
+        $("goal-title").textContent = "Live analysis";
         $("goal-how").textContent = "Move through your shots and watch your joint angles live.";
-        $("count-of").textContent = "reps"; $("rule").textContent = "Pick a drill on the Training page to count reps.";
+        $("goal-ring").hidden = true;
+        $("rule").textContent = "Choose a guided drill in Training to count reps automatically.";
         $("done").hidden = true; return;
       }
       $("title").textContent = drill.title;
@@ -191,7 +206,7 @@
 
     // ------------------------------------------------------------ voice coach: spoken cues, and voice commands
     // Speech is made by the browser itself (Web Speech API); nothing is sent to SmartCricket's server.
-    const voice = { on: store.get("sc_voice") !== "off", last: {}, rec: null, listening: false };
+    const voice = { on: store.get("sc_voice") !== "off", last: {}, rec: null, listening: false, started: false, outputErrorShown: false };
     function say(text, key = text, gapMs = 4000, urgent = false) {
       if (!liveAllowed || !voice.on || !("speechSynthesis" in window)) return;
       const now = performance.now();
@@ -202,6 +217,11 @@
       const v = coachVoice();
       if (v) { u.voice = v; u.lang = v.lang; } else u.lang = "en-GB";
       u.rate = 1.03; u.pitch = 1.0;
+      u.onerror = () => {
+        if (!voice.outputErrorShown) toast("Voice coach audio could not play. Check your browser sound settings.", "warn");
+        voice.outputErrorShown = true;
+      };
+      speechSynthesis.resume();
       speechSynthesis.speak(u);
     }
     // A man's voice for the coach: known male voices first (Chrome, Mac, Windows), then any voice whose name
@@ -221,29 +241,81 @@
     if ("speechSynthesis" in window) speechSynthesis.onvoiceschanged = () => { chosenVoice = null; coachVoice(); };
     const CUE = { knee: "Bend your front knee a little more", hip: "Push your hips back", tilt: "Keep your shoulders level",
                   shoulder: "Lift your arms higher" };
+    let shotGuides = [];
+    const guidesReady = fetch("shot-guides.json?v=1").then(r => {
+      if (!r.ok) throw new Error("Shot guides unavailable");
+      return r.json();
+    }).then(data => { shotGuides = data; return data; }).catch(() => []);
+    let guideTimer = null;
+    async function showShotGuide(query) {
+      const name = query.trim();
+      if (!name) { $("shot-guide-query").focus(); return; }
+      if (voice.listening) stopListening();
+      await guidesReady;
+      clearInterval(guideTimer);
+      const guide = SCShotGuide.match(name, shotGuides);
+      const box = $("shot-guide-result");
+      box.hidden = false;
+      if (!guide) {
+        box.innerHTML = `<p class="muted small">Asking the AI Coach about “${esc(name)}”…</p>`;
+        try {
+          const answer = (await api("/api/train/chat", { method: "POST", body: { text: `How do I play the cricket shot called ${name}? Explain the footwork, bat path and a safe shadow-practice drill.` } })).reply;
+          box.innerHTML = `<h3>${esc(name)}</h3><p class="shot-guide-answer">${esc(answer)}</p><small>Text coaching for this name. No movement illustration is available yet.</small>`;
+          box.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+          say(answer.slice(0, 480), "shot-guide", 0, true);
+        } catch (e) { box.innerHTML = `<p class="muted small">${esc(e.message)}. Try a common shot such as hook, pull, cover drive or sweep.</p>`; }
+        return;
+      }
+      let phase = 0;
+      const drawGuide = () => {
+        const matchingRef = referenceList.find(r => SCShotGuide.match(r.shot, [guide]));
+        box.innerHTML = `<div class="shot-guide-head"><div><span class="eyebrow-s">Action guide · illustration</span><h3>${esc(guide.name)}</h3></div><span class="chip ok">${phase + 1} / 3</span></div>
+          <div class="shot-guide-figure">${SCShotGuide.frame(guide.family, phase)}</div>
+          <p class="shot-guide-step"><b>${["Set up", "Move", "Finish"][phase]}</b> · ${esc(guide.steps[phase])}</p>
+          <small>${esc(guide.when)}</small>
+          ${matchingRef ? '<button type="button" class="ghost shot-guide-reference">Show model movement on camera</button>' : ''}`;
+        box.querySelector(".shot-guide-reference")?.addEventListener("click", () => {
+          $("ref").value = String(matchingRef.id);
+          $("ghost-on").checked = true;
+          $("ref").dispatchEvent(new Event("change"));
+        });
+      };
+      drawGuide();
+      box.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+      if (!matchMedia("(prefers-reduced-motion: reduce)").matches) guideTimer = setInterval(() => { phase = (phase + 1) % 3; drawGuide(); }, 1800);
+      say(`${guide.name}. ${guide.when} ${guide.steps.join(" ")} ${guide.cue}`, "shot-guide", 0, true);
+    }
+    $("shot-guide-ask").onclick = () => showShotGuide($("shot-guide-query").value);
+    $("shot-guide-query").onkeydown = e => { if (e.key === "Enter") showShotGuide(e.target.value); };
     function paintVoice() {
       $("voice").innerHTML = icon(voice.on ? "volume" : "mute");
       $("voice").dataset.tip = voice.on ? "Voice coach on" : "Voice coach off";
       $("voice").classList.toggle("on", voice.on);
       $("mic").innerHTML = icon("mic");
-      $("mic").classList.toggle("on", voice.listening);
-      $("mic").dataset.tip = voice.listening ? 'Listening: say "start", "stop", "reset" or "done"' : "Voice commands";
+      $("mic").classList.toggle("on", voice.started);
+      $("mic").dataset.tip = voice.started ? 'Listening: ask for a shot, or say "start", "stop", "reset" or "done"'
+        : voice.listening ? "Connecting microphone…" : "Voice commands";
     }
-    $("voice").onclick = () => { voice.on = !voice.on; store.set("sc_voice", voice.on ? "on" : "off"); if (!voice.on) speechSynthesis?.cancel(); paintVoice(); };
+    $("voice").onclick = () => { voice.on = !voice.on; store.set("sc_voice", voice.on ? "on" : "off"); if (!voice.on && "speechSynthesis" in window) speechSynthesis.cancel(); paintVoice(); };
     $("mic").onclick = () => (voice.listening ? stopListening() : listen());
     // What the player says, matched loosely so accents and short phrases still work.
     const COMMANDS = [
-      ["start", /\b(start|starts|started|star|stat|begin|go|open|camera on|turn on)\b/],
+      ["start", /\b(start|starts|started|star|stat|begin|camera on|turn on)\b/],
       ["stop", /\b(stop|stopped|pause|close|camera off|turn off|end)\b/],
       ["reset", /\b(reset|restart|again|zero)\b/],
       ["done", /\b(done|finish|finished|complete|completed)\b/],
     ];
+    const GUIDE_QUESTION = /\b(how (do|can|to).*(play|hit)|show me.*(shot|stroke)|teach me.*(shot|stroke))\b/;
     function handleCommand(text) {
       if (!liveAllowed) return null;
       const said = text.toLowerCase().trim();
+      const askedShot = SCShotGuide.match(said, shotGuides);
+      if (askedShot || GUIDE_QUESTION.test(said)) {
+        heard(said, true); showShotGuide(said); return "shot-guide";
+      }
       const cmd = (COMMANDS.find(([, re]) => re.test(said)) || [])[0];
       heard(said, !!cmd);
-      if (cmd === "start") { if (running) say("The camera is already on", "cmd", 0, true); else { say("Starting the camera", "cmd", 0, true); start(); } }
+      if (cmd === "start") { if (running) say("I can already see you", "cmd", 0, true); else start(); }
       else if (cmd === "stop") { if (running) { say("Camera off", "cmd", 0, true); stop(); } }
       else if (cmd === "reset") { resetCount(); say("Count reset", "cmd", 0, true); }
       else if (cmd === "done") { if (drill && !drill.done) markDone(); else say("Pick a drill on the training page first", "cmd", 0, true); }
@@ -258,11 +330,12 @@
       el.innerHTML = info ? `${icon("info")} <span>${esc(text)}</span>`
         : interim ? `${icon("mic")} <span>${esc(text)}…</span>`
         : understood ? `${icon("check")} Heard "<b>${esc(text)}</b>"`
-        : `${icon("mic")} Heard "<b>${esc(text)}</b>". Say "start", "stop", "reset" or "done".`;
+        : `${icon("mic")} Heard "<b>${esc(text)}</b>". Ask for a shot, or say "start", "stop", "reset" or "done".`;
       clearTimeout(heardTimer);
       if (!interim) heardTimer = setTimeout(() => (el.hidden = true), text.length > 60 ? 9000 : 4000);
     }
     const VOICE_HELP = "Voice commands need Chrome or Edge. Brave and Safari block the speech service they use. The voice coach still speaks in every browser.";
+    let voiceRestartTimer;
     async function listen() {
       if (!liveAllowed) return;
       const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -270,27 +343,45 @@
       if (!SR || brave) return heard(VOICE_HELP, false, false, true), toast(VOICE_HELP, "warn");
       voice.rec = new SR();
       voice.rec.continuous = true; voice.rec.lang = "en-IN"; voice.rec.interimResults = true; voice.rec.maxAlternatives = 3;
-      voice.rec.onresult = e => {
-        const r = e.results[e.results.length - 1];
-        if (!r.isFinal) return heard(r[0].transcript, false, true);
-        // try every alternative the recogniser offers before giving up
-        for (const alt of r) if (COMMANDS.some(([, re]) => re.test(alt.transcript.toLowerCase()))) return handleCommand(alt.transcript);
-        handleCommand(r[0].transcript);
+      voice.rec.onstart = () => {
+        voice.started = true;
+        paintVoice();
+        heard('Microphone ready. Say "start", "stop", "reset" or "done".', false, false, true);
       };
-      voice.rec.onend = () => { if (voice.listening) setTimeout(() => { try { voice.rec.start(); } catch {} }, 250); };   // keep listening
+      voice.rec.onresult = e => {
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const r = e.results[i];
+          if (!r?.length) continue;
+          if (!r.isFinal) { heard(r[0].transcript, false, true); continue; }
+          // SpeechRecognitionResult has indexed items and length, but is not iterable.
+          const alternatives = Array.from({ length: r.length }, (_, j) => r[j]);
+          const match = alternatives.find(alt => {
+            const said = alt.transcript.toLowerCase();
+            return SCShotGuide.match(said, shotGuides) || GUIDE_QUESTION.test(said) || COMMANDS.some(([, re]) => re.test(said));
+          });
+          handleCommand((match || r[0]).transcript);
+        }
+      };
+      voice.rec.onend = () => {
+        voice.started = false;
+        paintVoice();
+        if (voice.listening) voiceRestartTimer = setTimeout(() => { try { voice.rec.start(); } catch {} }, 400);
+      };
       voice.rec.onerror = e => {
-        if (e.error === "not-allowed" || e.error === "service-not-allowed") { voice.listening = false; paintVoice(); toast("Microphone access is blocked: click the mic icon in the address bar and choose Allow", "warn"); }
+        if (e.error === "not-allowed" || e.error === "service-not-allowed") { voice.listening = false; voice.started = false; paintVoice(); toast("Microphone access is blocked: click the mic icon in the address bar and choose Allow", "warn"); }
         else if (e.error === "network") {   // no internet, or a browser that blocks the speech service: stop retrying
-          voice.listening = false; try { voice.rec.stop(); } catch {} paintVoice();
+          voice.listening = false; voice.started = false; try { voice.rec.stop(); } catch {} paintVoice();
           heard(VOICE_HELP, false, false, true);
           toast("Voice commands could not reach the speech service. Check the internet, or use Chrome or Edge.", "warn");
         }
-        else if (e.error === "audio-capture") { voice.listening = false; paintVoice(); toast("No microphone found", "warn"); }
+        else if (e.error === "audio-capture") { voice.listening = false; voice.started = false; paintVoice(); toast("No microphone found", "warn"); }
+        else if (e.error !== "no-speech" && e.error !== "aborted") { voice.listening = false; voice.started = false; paintVoice(); heard(`Voice recognition stopped: ${e.error}`, false, false, true); }
       };
-      try { voice.rec.start(); voice.listening = true; heard('Listening… say "start", "stop", "reset" or "done"', false, true); } catch {}
+      try { voice.rec.start(); voice.listening = true; heard("Connecting microphone…", false, false, true); say("Voice commands ready.", "mic-ready", 0, true); }
+      catch (e) { voice.listening = false; heard(`Could not start microphone: ${e.message}`, false, false, true); }
       paintVoice();
     }
-    function stopListening() { voice.listening = false; try { voice.rec?.stop(); } catch {} $("heard").hidden = true; paintVoice(); }
+    function stopListening() { voice.listening = false; voice.started = false; clearTimeout(voiceRestartTimer); try { voice.rec?.abort(); } catch {} $("heard").hidden = true; paintVoice(); }
     paintVoice();
 
     // ------------------------------------------------------------ geometry (same rule as the server: 2D angle, visibility 0.5)
@@ -404,8 +495,10 @@
     $("ghost-ic").innerHTML = icon("ghost");
     $("record").innerHTML = `${icon("video")} Record my stroke and compare`;
 
+    let referenceList = [];
     (async () => {
       const refs = await api("/api/references");
+      referenceList = refs;
       $("ref").innerHTML = refs.length
         ? `<option value="">Choose a model player…</option>` + refs.map(r => `<option value="${r.id}">${esc(r.label)}</option>`).join("")
         : `<option value="">No reference clips yet</option>`;
@@ -559,47 +652,63 @@
     }
     if (location.protocol === "http:") api("/api/lan").then(paintPhone).catch(() => {});
 
-    // ------------------------------------------------------------ session summary and "save best moment"
-    // The session keeps numbers only. The best frame is kept in memory and uploaded only if the player asks.
-    const BIGGER_IS_BETTER = { shoulder: true };
+    // ------------------------------------------------------------ session summary and automatic best moment
+    // Keep one clear full-body frame in memory; upload it with the saved session.
     const sess = { start: null, activeMs: 0, lastTick: null, best: null, ghostBest: null, ghostSum: 0, ghostN: 0, stroke: null };
     const bestCanvas = document.createElement("canvas");
     let bestFrame = false;
-    $("moment").innerHTML = `${icon("camera")} Save best moment`;
-    function trackSession(m, t) {
+    const shotTracker = SCShotMotion.createTracker();
+    let bestShotScore = -Infinity;
+    const MOMENT_IDEAL = { knee: 140, hip: 145, elbow: 100, shoulder: 110, tilt: 2 };
+    function trackSession(m, t, still, L) {
       if (sess.lastTick != null && t - sess.lastTick < 500) sess.activeMs += t - sess.lastTick;   // body in view
       sess.lastTick = t;
       const key = rule ? rule.metric : "knee", v = m[key];
-      if (v == null) return;
-      const better = sess.best == null || (BIGGER_IS_BETTER[key] ? v > sess.best.value : v < sess.best.value);
-      if (better) {
-        sess.best = { metric: key, value: Math.round(v) };
+      if (v != null && (rule ? rule.inZone(v, still) : v >= 95 && v <= 160)) {
+        const score = L.filter(seen).length * 4 - Math.abs(v - MOMENT_IDEAL[key]) * .5;
+        if (sess.best == null || score > sess.best.score + 1) sess.best = { metric: key, value: Math.round(v), score };
+      }
+      const shotScore = shotTracker.update(L, video.videoWidth, video.videoHeight, t, seen);
+      if (shotScore != null && shotScore > bestShotScore + 2 && video.videoWidth && video.videoHeight) {
         bestCanvas.width = video.videoWidth; bestCanvas.height = video.videoHeight;
-        bestCanvas.getContext("2d").drawImage(video, 0, 0);   // memory only, never sent unless saved
-        bestFrame = true; $("moment").disabled = false;
+        bestCanvas.getContext("2d").drawImage(video, 0, 0);
+        bestFrame = true;
+        bestShotScore = shotScore;
       }
     }
-    const METRIC_NAME = { knee: "deepest front knee", hip: "deepest hip hinge", elbow: "most bent elbow", shoulder: "highest arm raise", tilt: "most level shoulders" };
+    const METRIC_NAME = { knee: "front knee", hip: "hip hinge", elbow: "elbow bend", shoulder: "arm raise", tilt: "shoulder level" };
     function showSummary() {
       if (sess.activeMs < 10000) return;   // too short to be worth saving
       const secs = Math.round(sess.activeMs / 1000), mm = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
-      const tiles = [[mm, "in view"], [rule?.type === "hold" ? `${count} s` : `${count}`, rule?.type === "hold" ? "held" : "reps"]];
+      const tiles = [[mm, "in view"]];
+      if (rule) tiles.push([rule.type === "hold" ? `${count} s` : `${count}`, rule.type === "hold" ? "held" : "reps"]);
       if (sess.best) tiles.push([`${sess.best.value}°`, METRIC_NAME[sess.best.metric]]);
       if (sess.ghostBest != null) tiles.push([`${sess.ghostBest}%`, "best ghost match"]);
       if (sess.stroke != null) tiles.push([`${sess.stroke}%`, "stroke match"]);
       $("session").hidden = false;
-      $("session").innerHTML = `<div class="ss-head">${icon("trophy")}<div><b>Session summary</b><small>${esc(drill ? drill.title : "Free practice")}${finished ? " · target reached" : ""}</small></div></div>
+      $("session").innerHTML = `<div class="ss-head">${icon("trophy")}<div><b>Session summary</b><small>${esc(drill ? drill.title : "Live analysis")}${finished ? " · target reached" : ""}</small></div></div>
         <div class="ss-tiles">${tiles.map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("")}</div>
+        ${bestFrame ? `<div class="ss-moment"><img id="ss-moment-image" alt="Automatically captured frame during a batting action"><div><b>Tracked shot moment</b><small>Tracked from arm and wrist movement · captured automatically</small><small id="ss-moment-status">Will save with your session</small></div></div>` : '<p class="muted small">No clear arm movement was tracked, so this session has no shot image.</p>'}
         <div class="ss-actions"><button id="ss-save">${icon("check")} Save session · +5 XP</button><button class="ghost" id="ss-skip">Discard</button></div>`;
+      if (bestFrame) $("ss-moment-image").src = bestCanvas.toDataURL("image/jpeg", .82);
       $("ss-save").onclick = saveSession;
       $("ss-skip").onclick = () => { $("session").hidden = true; resetSession(); };
     }
-    function resetSession() { Object.assign(sess, { start: null, activeMs: 0, lastTick: null, best: null, ghostBest: null, ghostSum: 0, ghostN: 0, stroke: null }); }
+    function resetSession() { Object.assign(sess, { start: null, activeMs: 0, lastTick: null, best: null, ghostBest: null, ghostSum: 0, ghostN: 0, stroke: null }); bestFrame = false; bestShotScore = -Infinity; shotTracker.reset(); bestCanvas.width = bestCanvas.height = 0; }
+    async function uploadBestMoment(sessionId) {
+      if (!bestFrame) return;
+      const blob = await new Promise(resolve => bestCanvas.toBlob(resolve, "image/jpeg", .86));
+      if (!blob) throw new Error("The best frame could not be encoded");
+      const form = new FormData();
+      form.append("file", blob, "live-best-moment.jpg");
+      form.append("metric", "shot_motion");
+      await api(`/api/train/live-sessions/${sessionId}/best-moment`, { method: "PUT", body: form });
+    }
     async function saveSession() {
       const b = $("ss-save"); b.disabled = true;
       try {
         const r = await api("/api/train/live-sessions", { method: "POST", body: {
-          drill_id: drill?.id ?? null, title: drill ? drill.title : "Free practice", duration_s: Math.max(1, Math.round(sess.activeMs / 1000)),
+          drill_id: drill?.id ?? null, title: drill ? drill.title : "Live analysis", duration_s: Math.max(1, Math.round(sess.activeMs / 1000)),
           reps: rule?.type === "reps" ? count : 0, hold_s: rule?.type === "hold" ? count : 0, completed: finished,
           stats: { best_metric: sess.best?.metric ?? null, best_deg: sess.best?.value ?? null, ghost: ghost.ref?.label ?? null,
                    ghost_best: sess.ghostBest, ghost_avg: sess.ghostN ? Math.round(sess.ghostSum / sess.ghostN) : null, stroke_match: sess.stroke } } });
@@ -610,26 +719,29 @@
         }
         b.innerHTML = `${icon("check")} Saved · +${r.xp} XP`; xpFloat(b, r.xp); refreshLevel(r.status);
         if (r.level_up) celebrate(r.status.level, r.status.level_name);
-        toast("Session saved to your Progress page", "ok"); resetSession();
+        try {
+          await uploadBestMoment(r.id);
+          const status = $("ss-moment-status");
+          if (status) status.textContent = "Saved with your session";
+          toast(bestFrame ? "Session and best moment saved to Progress" : "Session saved to Progress", "ok");
+        } catch (error) {
+          toast(`Session saved, but the image could not be saved: ${error.message}`, "warn");
+          const status = $("ss-moment-status");
+          if (status) status.textContent = "Image not saved. Retry below.";
+          const retry = document.createElement("button");
+          retry.className = "ghost";
+          retry.textContent = "Retry image save";
+          retry.onclick = async () => {
+            retry.disabled = true;
+            try { await uploadBestMoment(r.id); retry.remove(); if (status) status.textContent = "Saved with your session"; toast("Best moment saved", "ok"); resetSession(); }
+            catch (e) { toast(e.message, "error"); retry.disabled = false; }
+          };
+          $("session").append(retry);
+          return;
+        }
+        resetSession();
       } catch (e) { toast(e.message, "error"); b.disabled = false; }
     }
-    $("moment").onclick = async () => {
-      if (!bestFrame && !running) return;
-      const b = $("moment"); b.disabled = true;
-      const src = bestFrame ? bestCanvas : (() => { const c = document.createElement("canvas"); c.width = video.videoWidth; c.height = video.videoHeight; c.getContext("2d").drawImage(video, 0, 0); return c; })();
-      const blob = await new Promise(r => src.toBlob(r, "image/jpeg", .92));
-      const form = new FormData();
-      form.append("file", blob, "live-best-moment.jpg");
-      form.append("session_label", `Live · best moment${sess.best ? ` (${METRIC_NAME[sess.best.metric]} ${sess.best.value}°)` : ""}`);
-      try {
-        const a = await api("/api/image/analyse", { method: "POST", body: form });
-        toast("Best moment saved: open it from History", "ok");
-        say("Best moment saved", "moment", 0, true);
-        $("moment-msg").hidden = false;
-        $("moment-msg").innerHTML = `${icon("check")} Best moment saved. <a href="analysis.html?id=${a.id}">Open its report →</a>`;
-      } catch (e) { toast(e.message, "error"); }
-      b.disabled = !bestFrame && !running;
-    };
 
     // ------------------------------------------------------------ live shot recognition (needs the trained models)
     $("recog").innerHTML = `${icon("target")} Recognise my shot`;
@@ -678,19 +790,36 @@
     let landmarker = null, running = false, stream = null, frames = 0, fpsT = performance.now(), lastVideoT = -1;
 
     async function loadModel() {
-      const { FilesetResolver, PoseLandmarker } = await import("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/vision_bundle.mjs");
-      const files = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.2.0/wasm");
-      const opts = delegate => ({ baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task", delegate },
-                                  runningMode: "VIDEO", numPoses: 1 });
-      try { return await PoseLandmarker.createFromOptions(files, opts("GPU")); }
-      catch { return await PoseLandmarker.createFromOptions(files, opts("CPU")); }   // no WebGL: slower but works
+      const [{ FilesetResolver, PoseLandmarker }, modelResponse] = await Promise.all([
+        import("./vendor/mediapipe/vision_bundle.mjs"),
+        api("/api/live/pose-model", { raw: true }),
+      ]);
+      const modelUrl = URL.createObjectURL(await modelResponse.blob());
+      try {
+        const files = await FilesetResolver.forVisionTasks("./vendor/mediapipe/wasm");
+        // CPU avoids a GPU/WebGL initialisation hang on some browsers and laptops.
+        return await PoseLandmarker.createFromOptions(files, {
+          baseOptions: { modelAssetPath: modelUrl, delegate: "CPU" }, runningMode: "VIDEO", numPoses: 1,
+        });
+      } finally { URL.revokeObjectURL(modelUrl); }
     }
-    const modelReady = trainingReady.then(allowed => allowed ? loadModel() : null).then(m => {
-      if (!m) return;
+    function limitTime(promise, ms) {
+      let timer;
+      return Promise.race([promise, new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Pose tracking took too long to load. Check your connection and refresh the page.")), ms);
+      })]).finally(() => clearTimeout(timer));
+    }
+    let modelError = null;
+    const modelReady = trainingReady.then(allowed => allowed ? limitTime(loadModel(), 45000) : null).then(m => {
+      if (!m) return false;
       landmarker = m;
-      $("cam-msg").innerHTML = `${icon("video")}<b>Ready</b><small>Press "Start camera" and allow camera access.</small>`;
+      if (!running) camMsg("video", "Pose tracking ready", 'Press "Start camera" and allow camera access.');
+      return true;
     }).catch(e => {
-      $("cam-msg").innerHTML = `${icon("alert")}<b>Could not load the pose model</b><small>${esc(e.message || "Check your internet connection and refresh.")}</small>`;
+      modelError = e.message || "Check your internet connection and refresh.";
+      if (running) hint(`Pose tracking unavailable: ${modelError}`);
+      else camMsg("alert", "Could not load pose tracking", modelError);
+      return false;
     });
 
     function hint(text, kind = "warn") {
@@ -702,7 +831,7 @@
     let starting = false;
     function camMsg(ic, title, text, spin = false) {
       $("cam-msg").hidden = false;
-      $("cam-msg").innerHTML = `${spin ? '<span class="spinner"></span>' : icon(ic)}<b>${title}</b><small>${text}</small>`;
+      $("cam-msg").innerHTML = `${spin ? '<span class="spinner"></span>' : ic ? icon(ic) : ""}<b>${esc(title)}</b><small>${esc(text)}</small>`;
     }
     // Plain-language reasons for every way the browser can refuse the camera.
     function cameraError(e) {
@@ -713,7 +842,7 @@
       if (n === "NotFoundError" || n === "OverconstrainedError") return camMsg("alert", "No camera found", "Connect a webcam, or use a laptop with a built-in camera.");
       if (n === "NotReadableError" || n === "AbortError")
         return camMsg("alert", "The camera is busy", "Another app is using it (Zoom, Meet, FaceTime or another tab). Close it and try again.");
-      camMsg("alert", "Could not start the camera", esc((e && e.message) || "Please refresh the page and try again."));
+      camMsg("alert", "Could not start the camera", (e && e.message) || "Please refresh the page and try again.");
     }
 
     async function start() {
@@ -723,25 +852,28 @@
       if (!navigator.mediaDevices?.getUserMedia)
         return camMsg("alert", "Camera not available here", "Open the app at http://localhost:8000 in Chrome, Edge or Brave. Cameras only work on localhost or https.");
       starting = true; $("start").disabled = true;
-      try {
-        const status = await api("/api/train/status");
-        if (status.today?.rest_day) { recoveryNotice(); starting = false; return; }
-      } catch (e) {
-        liveNotice("Your training plan could not be checked", e.message, true);
-        starting = false;
-        return;
+      say("Opening your camera.", "camera-opening", 0, true);
+      if (drill) {
+        try {
+          const status = await api("/api/train/status");
+          if (status.today?.rest_day) { recoveryNotice(); starting = false; return; }
+        } catch (e) {
+          liveNotice("Your training plan could not be checked", e.message, true);
+          starting = false;
+          return;
+        }
       }
-      if (!landmarker) camMsg("", "Loading the pose model…", "One moment, then the camera starts.", true);
-      await modelReady;
-      if (!landmarker) { starting = false; $("start").disabled = false; return; }
-      camMsg("", "Starting the camera…", "If your browser asks, choose Allow. Look for the camera icon in the address bar.", true);
+      camMsg("", "Opening the camera…", "If your browser asks, choose Allow. Look for the camera icon in the address bar.", true);
       // a browser that is still waiting for a hidden permission prompt gives no answer: tell the player where to look
       const slow = setTimeout(() => camMsg("", "Waiting for camera permission…",
         "Click the camera icon in the address bar and choose Allow. In Brave, check the Shields (lion) icon too.", true), 6000);
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" }, audio: false });
         video.srcObject = stream;
-        await new Promise((ok, fail) => { video.onloadedmetadata = ok; setTimeout(() => fail(new Error("The camera did not send a picture.")), 8000); });
+        await new Promise((ok, fail) => {
+          const timer = setTimeout(() => fail(new Error("The camera did not send a picture.")), 8000);
+          video.onloadedmetadata = () => { clearTimeout(timer); ok(); };
+        });
         await video.play();
       } catch (e) {
         clearTimeout(slow); stream?.getTracks().forEach(t => t.stop()); stream = null;
@@ -750,15 +882,24 @@
       }
       clearTimeout(slow);
       canvas.width = video.videoWidth || 1280; canvas.height = video.videoHeight || 720;
-      $("cam-msg").hidden = true; $("fps").hidden = false; $("fps").textContent = "…";
+      $("cam-msg").hidden = true; $("fps").hidden = true; $("fps").textContent = "…";
       $("session").hidden = true;
       running = true; starting = false; $("start").disabled = false;
       $("start").innerHTML = `${icon("pause")} Stop camera`;
-      say(rule ? `Let's go. ${rule.rule}.` : "Camera on. I'll watch your angles.", "start", 0, true);
+      if (!landmarker) hint("Camera is on. Loading pose tracking…", "ok");
+      say("I can see you now.", "camera", 0, true);
+      const trackingReady = await modelReady;
+      if (!trackingReady || !running) {
+        if (running) hint(`Camera is on, but pose tracking is unavailable. ${modelError || "Refresh to retry."}`);
+        return;
+      }
+      hint(""); $("fps").hidden = false; fpsT = performance.now(); frames = 0;
+      say(rule ? `I can see you. ${rule.rule}.` : "Pose tracking is ready. I can watch your angles.", "tracking", 0, true);
       requestAnimationFrame(loop);
     }
     function stop(message = true) {
       running = false;
+      shotTracker.reset();
       stream?.getTracks().forEach(t => t.stop()); stream = null;
       video.srcObject = null;
       ctx.clearRect(0, 0, canvas.width, canvas.height);           // no frozen skeleton left behind
@@ -781,8 +922,14 @@
       const now = performance.now();
       if (video.currentTime !== lastVideoT) {
         lastVideoT = video.currentTime;
-        const res = landmarker.detectForVideo(video, now);
-        draw(res.landmarks[0]);
+        try {
+          const res = landmarker.detectForVideo(video, now);
+          draw(res.landmarks[0]);
+        } catch (e) {
+          $("fps").hidden = true;
+          hint(`Pose tracking stopped: ${e.message || "please refresh to retry"}`);
+          return;
+        }
         frames++;
         if (now - fpsT > 1000) { $("fps").textContent = `${Math.round(frames * 1000 / (now - fpsT))} fps`; frames = 0; fpsT = now; }
       }
@@ -793,8 +940,9 @@
       const w = canvas.width, h = canvas.height;
       ctx.clearRect(0, 0, w, h);
       const t = performance.now();
-      if (!L) { hint("I can't see you. Step into the frame."); paintAngles({}); lastT = t; return; }
+      if (!L) { shotTracker.reset(); hint("I can't see you. Step into the frame."); paintAngles({}); lastT = t; return; }
       const full = seen(L[0]) && (seen(L[27]) || seen(L[28])) && seen(L[11]) && seen(L[12]);
+      if (!full) shotTracker.reset();
       hint(full ? (finished ? "Target reached! Well done." : "") : "Step back: I need to see you from head to feet.", finished ? "ok" : "warn");
       if (!full) say("Step back so I can see you from head to feet", "frame", 8000);
       const g = drawGhost(L, w, h, t);   // gold ghost underneath your own skeleton
@@ -832,7 +980,7 @@
       lastHip = hipNow;
       paintAngles(m);
       if (g && full) liveMatch(L, w, h, g.gi);
-      if (full) trackSession(m, t);
+      if (full) trackSession(m, t, still, L);
       if (recording) recording.push(sideAngles(L, w, h));
       if (full) step(m, t, still);
       lastT = t;

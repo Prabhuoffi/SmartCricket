@@ -179,11 +179,17 @@
       $("compare-heading").scrollIntoView({ behavior: reduceMotion ? "instant" : "smooth", block: "start" });
       return;
     }
-    if (button.dataset.action === "delete" && !confirm("Delete this practice goal? Your captures and reports will remain in History.")) return;
     state.mutating = true; controls();
     try {
       if (button.dataset.action === "delete") {
-        await api(`/api/practice/goals/${goal.id}`, { method: "DELETE" });
+        const deleted = await confirmAction({
+          title: "Delete practice goal?",
+          message: "Your captures and reports will stay in History.",
+          itemLabel: goal.title,
+          confirmLabel: "Delete goal",
+          onConfirm: () => api(`/api/practice/goals/${goal.id}`, { method: "DELETE" }),
+        });
+        if (!deleted) return;
         state.goals = state.goals.filter(item => item.id !== goal.id);
         if (state.selectedGoal === goal.id) { state.selectedGoal = null; forgetComparison(); }
       } else {

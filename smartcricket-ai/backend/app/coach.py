@@ -12,15 +12,36 @@ import httpx
 from .config import settings
 
 # One coach for the whole app. PERSONA is shared; the topic rules add what is special about the page.
-PERSONA = """You are the SmartCricket AI Coach, the one friendly batting coach of the SmartCricket AI app.
-The player meets you on every page, so you know their training plan and progress (player JSON) and, on a result
-page, the analysis they are looking at (this_analysis JSON). Use ONLY these JSON facts about the player.
-Start every line that states a fact from the JSON with "Measured:".
-Start every line of general coaching advice with "General tip:".
-Suggest drills as suggestions, not instructions. Keep replies under 120 words.
-Joint angles are 2D estimates from one camera; never call technique right or wrong because of them.
-If the player reports pain or soreness, suggest rest and seeing a doctor or physiotherapist if it continues.
-Never invent numbers. Never give medical or injury advice."""
+PERSONA = """You are the SmartCricket AI Coach, the friendly, expert batting coach of the SmartCricket AI app.
+The player meets you on every page. You know their profile, training plan, progress, goals and recent results
+(player JSON) and, on a result page, the analysis they are looking at (this_analysis JSON).
+
+Answer ANY cricket question fully: batting technique, shot selection, footwork, playing pace, swing or spin,
+bowling, fielding, wicket-keeping, rules, match strategy, fitness, warm-ups, nutrition basics, mindset and
+nerves, equipment, and how to use this app. Explain the "why" behind your advice, not just the "what".
+
+Make it personal. Use the player's first name now and then. Fit advice to their stated handedness,
+experience, focus and notes, their weak spots, today's plan and their recent results. When a general
+answer connects to their own data, say how (for example, link a footwork tip to their knee-bend drill).
+
+How to write a reply:
+- Facts about THIS player from the JSON go on their own line starting with "Measured:".
+- General cricket knowledge and coaching go in paragraphs starting with "General tip:". These may use
+  well-known cricket numbers (pitch length, typical angles, ball speeds and so on).
+- Then give a clear, practical answer: short steps or a mini drill when useful, and one line on what to
+  focus on next. Use plain words; short lines; "-" bullets for steps.
+- Match the length to the question: a quick question gets 2 to 4 lines; "explain" or "how do I" questions
+  get a full answer of up to about 220 words.
+- End with one short follow-up question or next step when it helps the conversation continue.
+
+Rules:
+- Never invent numbers about the player. Every number about the player must come from the JSON.
+- Joint angles are 2D estimates from one camera; never call technique right or wrong because of them.
+- Suggest drills as suggestions, not instructions.
+- If the player reports pain or soreness, suggest rest and seeing a doctor or physiotherapist if it
+  continues. Never diagnose an injury or give medical treatment advice.
+- If a question is not about cricket, sport or this app, say kindly that you are their cricket coach and
+  steer back to cricket."""
 
 ANALYSIS_RULES = """Topic: the result in this_analysis. Answer about it first; use the player JSON when the player
 asks what to practise or how this fits their plan.
@@ -32,8 +53,9 @@ body movement instead (joint ranges, the frame with the most movement), never gu
 A heatmap shows where the model looked; it does not prove the model reasoned correctly.
 In reference_comparison, mean_diff is the player's angle minus the reference angle in degrees."""
 
-TRAINING_RULES = """Topic: the player's training (today's plan, check-in, streak, level, this week), with their most
-recent result in latest_result. Never push a player to train when they report soreness."""
+TRAINING_RULES = """Page: Training. The player often asks about today's plan, check-in, streak, level and this
+week, but may ask any cricket question. Their most recent result is in latest_result.
+Never push a player to train when they report soreness."""
 
 NO_KEY_REPLY = ("The AI Coach is not set up yet: add LLM_API_KEY to the .env file and restart the server. "
                 "Your results, plan and progress still work without it.")
@@ -92,14 +114,22 @@ def _numbers(obj):
 
 
 def numbers_grounded(reply: str, facts: dict) -> bool:
+    """Every number about the player must come from the facts. Paragraphs tagged "General tip:" hold general
+    cricket knowledge (a 22-yard pitch, a 90 degree elbow) and are not checked against the player's data."""
     allowed = [round(n, 0) for n in _numbers(facts)]
-    for tok in re.findall(r"\d+(?:\.\d+)?", reply):
-        n = float(tok)
-        if n <= 15:  # small counts ("2 drills", "3 sets") are allowed
+    for block in re.split(r"\n\s*\n", reply):
+        if block.lstrip().startswith("General tip:"):
             continue
-        if not any(abs(round(n, 0) - a) <= 1 for a in allowed):
-            return False
+        for tok in re.findall(r"\d+(?:\.\d+)?", block):
+            n = float(tok)
+            if n <= 15:  # small counts ("2 drills", "3 sets") are allowed
+                continue
+            if not any(abs(round(n, 0) - a) <= 1 for a in allowed):
+                return False
     return True
+
+
+HISTORY = 12  # messages of earlier conversation sent with each question
 
 
 class CoachBusy(Exception):
@@ -120,7 +150,7 @@ def _call(messages: list[dict]) -> str:
         contents = [{"role": "model" if m["role"] == "assistant" else "user", "parts": [{"text": m["content"]}]}
                     for m in messages if m["role"] != "system"]
         body = {"system_instruction": {"parts": [{"text": messages[0]["content"]}]}, "contents": contents,
-                "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024,
+                "generationConfig": {"temperature": 0.5, "maxOutputTokens": 1400,
                                      "thinkingConfig": {"thinkingBudget": 0}}}
         models = [settings.llm_model] + [m.strip() for m in settings.llm_fallback_models.split(",")
                                          if m.strip() and m.strip() != settings.llm_model]
@@ -141,19 +171,19 @@ def _call(messages: list[dict]) -> str:
         raise CoachBusy()
     r = httpx.post("https://api.openai.com/v1/chat/completions",
                    headers={"Authorization": f"Bearer {settings.llm_api_key}"},
-                   json={"model": settings.llm_model, "messages": messages, "temperature": 0.3, "max_tokens": 400},
+                   json={"model": settings.llm_model, "messages": messages, "temperature": 0.5, "max_tokens": 900},
                    timeout=30)
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"].strip()
 
 
 def converse(facts: dict, history: list[tuple[str, str]], question: str, topic_rules: str) -> str:
-    """One conversation turn with the coach: shared persona, topic rules, the facts, the last six messages,
+    """One conversation turn with the coach: shared persona, topic rules, the facts, the last twelve messages,
     and the number check (regenerate once, then fall back)."""
     if not settings.llm_api_key:
         return NO_KEY_REPLY
     messages = [{"role": "system", "content": PERSONA + "\n" + topic_rules + "\n\nFacts JSON:\n" + json.dumps(facts)}]
-    for role, text in history[-6:]:
+    for role, text in history[-HISTORY:]:
         messages.append({"role": "assistant" if role == "coach" else "user", "content": text})
     messages.append({"role": "user", "content": question})
     answer = _call(messages)
@@ -161,7 +191,8 @@ def converse(facts: dict, history: list[tuple[str, str]], question: str, topic_r
         return answer
     messages.append({"role": "assistant", "content": answer})
     messages.append({"role": "user", "content": "Your reply used a number that is not in the facts JSON. "
-                                                "Answer again using only numbers from the JSON."})
+                                                "Answer again using only numbers from the JSON for facts about the "
+                                                "player; put general cricket numbers in a \"General tip:\" paragraph."})
     answer = _call(messages)
     return answer if numbers_grounded(answer, facts) else FALLBACK_REPLY
 

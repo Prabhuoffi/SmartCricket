@@ -100,6 +100,21 @@ def user(client, email, admin=False, monkeypatch=None):
     return {"Authorization": f"Bearer {r.json()['token']}"}, r.json()
 
 
+def test_live_pose_model_is_served_from_installed_assets(client, tmp_path, monkeypatch):
+    h, _ = user(client, "live-model@example.com")
+    for asset, media_type in (("vision_bundle.mjs", "text/javascript"),
+                              ("wasm/vision_wasm_internal.wasm", "application/wasm")):
+        runtime = client.head(f"/app/vendor/mediapipe/{asset}")
+        assert runtime.status_code == 200 and runtime.headers["content-type"].startswith(media_type)
+    assert client.get("/api/live/pose-model").status_code == 401
+    response = client.get("/api/live/pose-model", headers=h)
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/octet-stream"
+    assert len(response.content) == (settings.model_dir / "pose_landmarker_full.task").stat().st_size
+    monkeypatch.setattr(settings, "model_dir", tmp_path)
+    assert client.get("/api/live/pose-model", headers=h).status_code == 503
+
+
 def test_status_without_models(client, tmp_path, monkeypatch):
     h, _ = user(client, "v1@example.com")
     monkeypatch.setattr(settings, "model_dir", tmp_path)

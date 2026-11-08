@@ -8,7 +8,7 @@ Explainable multimodal cricket shot analysis and virtual coaching (M.E. CSE fina
 | Video analysis | Works at once as **movement analysis** (skeleton on 15 frames, joint angles over time, frame of most movement, joint ranges). With the trained models installed it also gives the shot type (15 classes) with calibrated confidence, top-3, Grad-CAM heatmaps and the attention timeline |
 | Reference comparison | DTW alignment of joint angles against an admin-provided reference clip |
 | AI coach | OpenAI or Gemini, grounded on stored numbers only, with a number check |
-| Live mirror | Camera drills in the browser (MediaPipe JS, nothing uploaded): live skeleton and angles, reps and holds counted, drill ticked automatically |
+| Live mirror | Camera drills in the browser with local pose tracking: live skeleton, angles, reps, spoken shot guidance and a movement illustration. Saving a session uploads its selected shot image. |
 | Input quality | Sharpness, light, batter size, whole body, camera view and other people checked on every upload, with tips |
 | Training coach | Daily three-drill plan from the player's own photos and clips, check-in with soreness safety rule, quiz, XP, streaks, five levels, weekly report |
 | Platform | Player and admin roles, history, dashboard, CSV and one-click PDF reports, admin console |

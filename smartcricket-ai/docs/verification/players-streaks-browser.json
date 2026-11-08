@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-06",
+  "context": "Isolated temporary headless Chrome profile; live local app; existing admin authorization; no browser account edits.",
+  "players": 28,
+  "labeled_demo_players": 27,
+  "streak_min": 2,
+  "streak_max": 28,
+  "zero_and_best_visible": true,
+  "sort_both_directions": true,
+  "search_preserves_zero": true,
+  "desktop": {
+    "client": 1440,
+    "scroll": 1440
+  },
+  "mobile": {
+    "client": 390,
+    "scroll": 390
+  },
+  "unexpected_script_exceptions": []
+}

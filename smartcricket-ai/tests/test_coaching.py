@@ -213,3 +213,116 @@ def test_replanning_preserves_saved_live_session(client):
     with SessionLocal() as db:
         saved = db.get(LiveSession, response.json()["id"])
         assert saved is not None and saved.drill_id is None and saved.duration_s == 30
+
+
+def test_live_best_moment_is_saved_and_private(client):
+    import cv2
+    import numpy as np
+
+    owner = register(client, "live-moment-owner@example.com")
+    other = register(client, "live-moment-other@example.com")
+    session = client.post("/api/train/live-sessions", headers=owner,
+                          json={"title": "Knee bend practice", "duration_s": 20}).json()["id"]
+    image = cv2.imencode(".jpg", np.full((24, 24, 3), 90, dtype=np.uint8))[1].tobytes()
+    path = f"/api/train/live-sessions/{session}/best-moment"
+    assert client.get(path, headers=owner).status_code == 404
+    assert client.put(path, headers=other, data={"metric": "knee", "value": "145"},
+                      files={"file": ("best.jpg", image, "image/jpeg")}).status_code == 404
+    saved = client.put(path, headers=owner, data={"metric": "knee", "value": "145"},
+                       files={"file": ("best.jpg", image, "image/jpeg")})
+    assert saved.status_code == 200 and saved.json()["image_url"] == path
+    assert client.get(path, headers=owner).content == image
+    assert client.get(path, headers=other).status_code == 404
+    shot = client.put(path, headers=owner, data={"metric": "shot_motion"},
+                      files={"file": ("shot.jpg", image, "image/jpeg")})
+    assert shot.status_code == 200 and shot.json()["metric"] == "shot_motion"
+    assert shot.json()["value"] is None
+    recent = client.get("/api/train/progress", headers=owner).json()["live_sessions"]
+    assert recent[0]["best_moment_url"] == path
+    assert client.put(path, headers=owner, files={"file": ("bad.jpg", b"not an image", "image/jpeg")}).status_code == 422
+
+
+def test_live_history_and_deletion_keep_owner_boundaries(client):
+    import cv2
+    import numpy as np
+    from pathlib import Path
+    from backend.app.db import SessionLocal
+    from backend.app.models import LiveMoment
+    from sqlalchemy import select
+
+    owner = register(client, "live-history-owner@example.com")
+    other = register(client, "live-history-other@example.com")
+    session = client.post("/api/train/live-sessions", headers=owner,
+                          json={"title": "Hook shadow practice", "duration_s": 27}).json()["id"]
+    image = cv2.imencode(".jpg", np.full((24, 24, 3), 110, dtype=np.uint8))[1].tobytes()
+    moment_url = f"/api/train/live-sessions/{session}/best-moment"
+    assert client.put(moment_url, headers=owner, data={"metric": "shot_motion"},
+                      files={"file": ("shot.jpg", image, "image/jpeg")}).status_code == 200
+    history = client.get("/api/train/live-sessions", headers=owner).json()["sessions"]
+    assert history[0]["id"] == session and history[0]["best_moment_url"] == moment_url
+    assert client.get("/api/train/live-sessions", headers=other).json()["sessions"] == []
+    assert client.delete(moment_url, headers=other).status_code == 404
+    assert client.delete(f"/api/train/live-sessions/{session}", headers=other).status_code == 404
+    with SessionLocal() as db:
+        path = Path(db.scalar(select(LiveMoment).where(LiveMoment.session_id == session)).file_path)
+    assert path.is_file()
+    assert client.delete(moment_url, headers=owner).status_code == 204
+    assert not path.exists() and client.get(moment_url, headers=owner).status_code == 404
+    assert client.get("/api/train/live-sessions", headers=owner).json()["sessions"][0]["best_moment_url"] is None
+    assert client.delete(moment_url, headers=owner).status_code == 404
+    assert client.put(moment_url, headers=owner,
+                      files={"file": ("shot.jpg", image, "image/jpeg")}).status_code == 200
+    with SessionLocal() as db:
+        replacement = Path(db.scalar(select(LiveMoment).where(LiveMoment.session_id == session)).file_path)
+    xp_before = client.get("/api/train/status", headers=owner).json()["xp"]["parts"]["live"]
+    assert client.delete(f"/api/train/live-sessions/{session}", headers=owner).status_code == 204
+    assert not replacement.exists()
+    assert client.get("/api/train/live-sessions", headers=owner).json()["sessions"] == []
+    assert client.get("/api/train/progress", headers=owner).json()["live_sessions"] == []
+    assert client.get("/api/train/status", headers=owner).json()["xp"]["parts"]["live"] == xp_before - 5
+    assert client.delete(f"/api/train/live-sessions/{session}", headers=owner).status_code == 404
+
+
+def test_training_chat_is_personal_and_answers_general_cricket(client, monkeypatch):
+    from backend.app import coach
+    from backend.app.config import settings
+    from backend.app.db import SessionLocal
+    from backend.app.models import PlayerProfile, User
+
+    h = register(client, "t-personal@example.com")
+    with SessionLocal() as db:
+        uid = db.query(User).filter_by(email="t-personal@example.com").one().id
+        db.add(PlayerProfile(user_id=uid, handedness="left", experience="beginner", focus="playing spin"))
+        db.commit()
+    sent = {}
+
+    def fake_call(messages):
+        sent["system"], sent["n"] = messages[0]["content"], len(messages)
+        return "General tip: the pitch is 22 yards long, so use your feet to reach the pitch of the ball."
+
+    monkeypatch.setattr(settings, "llm_api_key", "test-key")
+    monkeypatch.setattr(coach, "_call", fake_call)
+    r = client.post("/api/train/chat", headers=h, json={"text": "How do I play spin?"}).json()
+    assert "22 yards" in r["reply"]  # general cricket numbers are no longer rejected
+    assert '"batting_hand": "left"' in sent["system"] and '"focus": "playing spin"' in sent["system"]
+    assert "Answer ANY cricket question" in sent["system"]
+
+
+def test_coach_tab_context_and_new_chat(client, monkeypatch):
+    from backend.app import coach
+    from backend.app.config import settings
+
+    h = register(client, "t-coachtab@example.com")
+    d = client.get("/api/train/coach", headers=h).json()
+    assert d["chat"] == [] and d["context"]["name"] == "Test" and d["context"]["level"] >= 1
+    assert d["context"]["profile"] is None and d["context"]["latest_result"] is None
+
+    monkeypatch.setattr(settings, "llm_api_key", "test-key")
+    monkeypatch.setattr(coach, "_call", lambda messages: "General tip: watch the ball onto the bat.")
+    client.post("/api/train/chat", headers=h, json={"text": "How do I play the pull?"})
+    chat = client.get("/api/train/coach", headers=h).json()["chat"]
+    assert [m["role"] for m in chat] == ["user", "coach"] and chat[0]["at"]
+
+    assert client.delete("/api/train/chat", headers=h).status_code == 204
+    assert client.get("/api/train/coach", headers=h).json()["chat"] == []
+    assert client.get("/api/train/coach").status_code == 401

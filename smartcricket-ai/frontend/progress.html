@@ -162,9 +162,13 @@
       if (P.live_sessions.length) {
         $("live-card").hidden = false;
         const N = { knee: "front knee", hip: "hip", elbow: "elbow", shoulder: "arm raise", tilt: "shoulder tilt" };
-        $("live-list").innerHTML = P.live_sessions.map(x => `<div class="it"><span class="dot">${icon("video")}</span>
+        $("live-list").innerHTML = P.live_sessions.map(x => `<div class="it">${x.best_moment_url ? `<img class="live-moment-thumb" data-moment="${x.id}" alt="Best clear moment from ${esc(x.title)}">` : `<span class="dot">${icon("video")}</span>`}
           <div style="min-width:0;flex:1"><b>${esc(x.title)}</b>${x.completed ? ' <span class="chip ok">target reached</span>' : ""}
           <small>${wk(x.day)} · ${Math.round(x.duration_s / 60) || "<1"} min${x.reps ? ` · ${x.reps} reps` : ""}${x.hold_s ? ` · ${x.hold_s} s held` : ""}${x.stats.best_deg != null ? ` · best ${N[x.stats.best_metric] || ""} ${x.stats.best_deg}°` : ""}${x.stats.ghost_best != null ? ` · ghost ${x.stats.ghost_best}%` : ""}${x.stats.stroke_match != null ? ` · stroke ${x.stats.stroke_match}%` : ""}</small></div></div>`).join("");
+        for (const x of P.live_sessions.filter(x => x.best_moment_url)) {
+          const img = $("live-list").querySelector(`[data-moment="${x.id}"]`);
+          loadImage(img, x.best_moment_url);
+        }
       }
       document.querySelectorAll(".seg-tabs button").forEach(b => b.onclick = () => {
         document.querySelectorAll(".seg-tabs button").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", x === b); });

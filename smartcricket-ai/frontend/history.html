@@ -4,13 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SmartCricket AI: History</title>
-  <link rel="stylesheet" href="css/style.css?v=48">
+  <link rel="stylesheet" href="css/style.css?v=49">
+  <link rel="stylesheet" href="css/confirmation.css?v=1">
 </head>
 <body>
   <div class="layout">
     <main>
       <div class="page-head">
-        <div class="reveal"><h1>History</h1><p class="muted">Every analysis you have run, newest first.</p></div>
+        <div class="reveal"><h1>History</h1><p class="muted">Your analyses and live practice sessions, newest first.</p></div>
         <div class="reveal" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
           <div style="position:relative">
             <span id="sico" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--ink-3)"></span>
@@ -24,6 +25,8 @@
   </div>
   <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
+  <script src="js/history-items.js?v=1"></script>
+  <script src="js/confirmation.js?v=1"></script>
   <script>
     requireLogin();
     sidebar("history.html");
@@ -33,10 +36,12 @@
     $("cards").innerHTML = Array(4).fill('<div class="card hcard"><div class="ph skeleton"></div><div class="body"><div class="skeleton" style="height:14px;width:70%"></div><div class="skeleton" style="height:12px;width:45%;margin-top:8px"></div></div></div>').join("");
     revealAll();
 
-    let rows = [];
+    let analyses = [], live = [];
+    const items = () => SCHistoryItems.combine(analyses, live);
     async function loadHistory() {
       try {
-        rows = await api("/api/history");
+        const [captures, sessions] = await Promise.all([api("/api/history"), api("/api/train/live-sessions")]);
+        analyses = captures; live = sessions.sessions;
         filterHistory();
       } catch (e) {
         $("cards").innerHTML = `<div class="card" style="grid-column:1/-1">${alertHtml("error", e.message)}<button type="button" class="ghost" id="retry-history">Retry history</button></div>`;
@@ -49,12 +54,21 @@
       if (!list.length) {
         $("cards").innerHTML = `<div class="card empty" style="grid-column:1/-1">
           <div class="art">${BALL.replace('class="ball"', 'style="width:90px"').replace(/bg1/g, "bg3")}</div>
-          <h2>${rows.length ? "No matches" : "No analyses yet"}</h2>
-          <p class="muted">${rows.length ? "Try a different search." : "Upload a batting photo to get your first posture report."}</p>
-          ${rows.length ? "" : `<a class="btn" href="image.html">${icon("upload")} Analyse a photo</a>`}</div>`;
+          <h2>${items().length ? "No matches" : "No saved activity yet"}</h2>
+          <p class="muted">${items().length ? "Try a different search." : "Save a live session or analyse a batting photo to begin."}</p>
+          ${items().length ? "" : `<a class="btn" href="live.html">${icon("video")} Start live practice</a>`}</div>`;
         return;
       }
-      $("cards").innerHTML = list.map((a, i) => {
+      $("cards").innerHTML = list.map(({ kind, data: a }, i) => {
+        if (kind === "live") return `<article class="card hcard history-live-card reveal" style="animation-delay:${i * 60}ms">
+          <div class="ph">${a.best_moment_url ? `<button type="button" class="history-live-image" data-view-live="${a.id}" aria-label="View captured image from ${esc(a.title)}"><img data-src="${a.best_moment_url}" alt="Captured shot moment from ${esc(a.title)}"></button>`
+            : `<div class="history-live-placeholder">${icon("video")}<span>No shot image captured</span></div>`}
+            <span class="chip ok badge">Live practice</span></div>
+          <div class="body"><b>${esc(a.title)}</b><span class="faint small">${fmtDate(a.created_at)}</span>
+          <div class="history-live-meta"><span class="chip info">${Math.max(1, Math.round(a.duration_s / 60))} min</span>
+            ${a.reps ? `<span class="chip off">${a.reps} reps</span>` : ""}${a.completed ? '<span class="chip ok">Target reached</span>' : ""}</div>
+          <div class="history-actions">${a.best_moment_url ? `<button type="button" class="ghost" data-delete-image="${a.id}">Delete image</button>` : ""}
+            <button type="button" class="ghost history-danger" data-delete-live="${a.id}">Delete session</button></div></div></article>`;
         const s = a.summary || {};
         const chip = a.mode === "image"
           ? `<span class="chip ${s.visible >= 25 ? "ok" : s.visible ? "low" : "off"} badge">${s.visible ?? 0}/33 visible</span>`
@@ -69,11 +83,46 @@
                    : `<span class="chip off">${s.tracked_frames ?? "–"}/15 frames</span>`)}</div></div></a>`;
       }).join("");
       $("cards").querySelectorAll("img[data-src]").forEach(img => loadImage(img, img.dataset.src));
+      $("cards").querySelectorAll("[data-view-live]").forEach(b => b.onclick = () => viewMoment(Number(b.dataset.viewLive)));
+      $("cards").querySelectorAll("[data-delete-image]").forEach(b => b.onclick = () => deleteImage(Number(b.dataset.deleteImage)));
+      $("cards").querySelectorAll("[data-delete-live]").forEach(b => b.onclick = () => deleteSession(Number(b.dataset.deleteLive)));
     }
 
     function filterHistory() {
       const q = $("search").value.trim().toLowerCase();
-      render(rows.filter(a => `${a.original_name} ${a.session_label || ""} ${a.shot || ""}`.toLowerCase().includes(q)));
+      render(SCHistoryItems.search(items(), q));
+    }
+    async function viewMoment(id) {
+      const row = live.find(x => x.id === id);
+      if (!row?.best_moment_url) return;
+      const dialog = document.createElement("dialog");
+      dialog.className = "history-moment-dialog";
+      dialog.innerHTML = `<div class="history-moment-head"><b>${esc(row.title)}</b><button type="button" class="ghost" aria-label="Close image">×</button></div><img alt="Captured shot moment from ${esc(row.title)}">`;
+      document.body.append(dialog);
+      dialog.querySelector("button").onclick = () => dialog.close();
+      dialog.onclose = () => dialog.remove();
+      dialog.showModal();
+      await loadImage(dialog.querySelector("img"), row.best_moment_url);
+    }
+    async function deleteImage(id) {
+      const row = live.find(x => x.id === id);
+      if (!row?.best_moment_url) return;
+      const deleted = await confirmAction({ title: "Delete captured image?", message: "The live session and its measurements will stay in History.",
+        itemLabel: row.title, confirmLabel: "Delete image",
+        onConfirm: () => api(`/api/train/live-sessions/${id}/best-moment`, { method: "DELETE" }) });
+      if (!deleted) return;
+      row.best_moment_url = null;
+      filterHistory(); toast("Captured image deleted", "ok");
+    }
+    async function deleteSession(id) {
+      const row = live.find(x => x.id === id);
+      if (!row) return;
+      const deleted = await confirmAction({ title: "Delete live session?", message: "The session, its captured image and its live-session XP will be removed.",
+        itemLabel: row.title, confirmLabel: "Delete session",
+        onConfirm: () => api(`/api/train/live-sessions/${id}`, { method: "DELETE" }) });
+      if (!deleted) return;
+      live = live.filter(x => x.id !== id);
+      filterHistory(); refreshLevel(); toast("Live session deleted", "ok");
     }
     $("search").oninput = filterHistory;
     $("csv").onclick = () => openBlob("/api/reports/history.csv", "smartcricket_history.csv").then(() => toast("CSV downloaded", "ok")).catch(e => toast(e.message, "error"));

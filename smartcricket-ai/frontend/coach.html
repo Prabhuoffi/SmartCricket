@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: AI Coach</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <div class="cp">
+        <!-- conversation -->
+        <section class="card cp-chat reveal" aria-label="Conversation with the AI Coach">
+          <header class="cp-top">
+            <div class="cp-bot"></div>
+            <div class="cp-id"><b>AI Coach</b><small><span class="live"></span><span id="cp-state">Knows your plan, profile and results</span></small></div>
+            <button type="button" class="ghost cp-new" id="new-chat" hidden></button>
+          </header>
+
+          <div class="cp-scroll" id="scroll">
+            <div class="cp-welcome" id="welcome" hidden>
+              <div class="cp-hello"></div>
+              <h1 id="hello"></h1>
+              <p class="muted">Ask me anything about cricket: your plan, a shot, facing spin or pace, match nerves, fitness. I'll explain the why and link it to your own training.</p>
+              <div class="cp-starters" id="starters"></div>
+            </div>
+            <div class="cp-msgs" id="msgs" aria-live="polite"></div>
+          </div>
+
+          <div class="cp-compose">
+            <div class="ask" id="ask"></div>
+            <form class="cp-form" id="form">
+              <textarea id="q" rows="1" maxlength="500" placeholder="Ask your coach anything…" aria-label="Your question"></textarea>
+              <button id="send" aria-label="Send"></button>
+            </form>
+            <p class="cp-note faint">Enter to send · Shift+Enter for a new line · Numbers about you always come from your own data.</p>
+          </div>
+        </section>
+
+        <!-- what the coach knows -->
+        <aside class="card cp-side reveal" aria-label="What the coach knows about you">
+          <details id="know" open>
+            <summary><span class="eyebrow-s">Personal context</span><h2>What I know about you</h2></summary>
+            <div id="ctx"><p class="muted">Loading…</p></div>
+          </details>
+        </aside>
+      </div>
+    </main>
+  </div>
+  <script src="js/dropdown.js?v=1"></script>
+  <script src="js/api.js?v=48"></script>
+  <script>
+    requireLogin();
+    sidebar("coach.html");
+    const $ = id => document.getElementById(id);
+    revealAll();
+    document.querySelector(".cp-bot").innerHTML = icon("chat");
+    document.querySelector(".cp-hello").innerHTML = BALL;
+    $("send").innerHTML = icon("arrow");
+    $("new-chat").innerHTML = `${icon("plus")} New chat`;
+    if (matchMedia("(max-width: 1000px)").matches) $("know").open = false;
+
+    const STARTERS = [
+      ["dumbbell", "My training", "What should I focus on today, and why?"],
+      ["target", "Technique", "How do I play a perfect cover drive?"],
+      ["bolt", "Spin & pace", "How do I use my feet against spin?"],
+      ["trophy", "Match & mind", "How do I deal with nerves before batting?"],
+    ];
+    let busy = false, chat = [];
+
+    const scrollDown = () => { const s = $("scroll"); s.scrollTop = s.scrollHeight; };
+    function bubble(role, text, { old = false } = {}) {
+      $("welcome").hidden = true;
+      $("new-chat").hidden = false;
+      const row = document.createElement("div");
+      row.className = `cp-row ${role}${old ? " old" : ""}`;
+      row.innerHTML = role === "coach"
+        ? `<span class="cp-av">${icon("chat")}</span><div class="cp-bubble"><div class="msg-text">${coachHtml(text)}</div>
+            <button type="button" class="cp-copy" aria-label="Copy answer">${icon("doc")} Copy</button></div>`
+        : `<div class="cp-bubble">${esc(text)}</div>`;
+      const copy = row.querySelector(".cp-copy");
+      if (copy) copy.onclick = async () => {
+        try { await navigator.clipboard.writeText(text); copy.innerHTML = `${icon("check")} Copied`; setTimeout(() => (copy.innerHTML = `${icon("doc")} Copy`), 1600); }
+        catch { toast("Could not copy", "warn"); }
+      };
+      $("msgs").append(row);
+      scrollDown();
+      return row;
+    }
+    function typing() {
+      const row = document.createElement("div");
+      row.className = "cp-row coach";
+      row.innerHTML = `<span class="cp-av">${icon("chat")}</span><div class="cp-bubble cp-typing"><i></i><i></i><i></i><small>Thinking about your data…</small></div>`;
+      $("msgs").append(row); scrollDown();
+      return row;
+    }
+    function welcome(name) {
+      $("hello").textContent = `${greeting()}, ${name}! I'm your batting coach.`;
+      $("starters").innerHTML = STARTERS.map(([ic, g, q]) => `<button type="button" class="cp-starter" data-q="${esc(q)}">
+        <span class="cps-ic">${icon(ic)}</span><span><small>${g}</small><b>${esc(q)}</b></span></button>`).join("");
+      $("starters").querySelectorAll(".cp-starter").forEach(b => (b.onclick = () => ask(b.dataset.q)));
+      $("welcome").hidden = false; $("new-chat").hidden = true;
+    }
+
+    async function ask(text) {
+      text = (text || "").trim();
+      if (!text || busy) return;
+      busy = true; $("send").disabled = true;
+      $("q").value = ""; grow();
+      bubble("user", text);
+      const t = typing();
+      try {
+        const r = await api("/api/train/chat", { method: "POST", body: { text } });
+        t.remove(); bubble("coach", r.reply);
+      } catch (err) { t.remove(); bubble("coach", err.message); }
+      busy = false; $("send").disabled = false; $("q").focus();
+    }
+
+    const grow = () => { const q = $("q"); q.style.height = "auto"; q.style.height = `${Math.min(q.scrollHeight, 160)}px`; };
+    $("q").oninput = grow;
+    $("q").onkeydown = e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); ask($("q").value); } };
+    $("form").onsubmit = e => { e.preventDefault(); ask($("q").value); };
+    askChips($("ask"), ask, { title: "More ideas" });
+
+    $("new-chat").onclick = async () => {
+      if (busy) return;
+      $("new-chat").disabled = true;
+      try {
+        await api("/api/train/chat", { method: "DELETE" });
+        $("msgs").innerHTML = ""; welcome(ctxName);
+        toast("Started a new chat", "ok");
+      } catch (err) { toast(err.message, "error"); }
+      finally { $("new-chat").disabled = false; }
+    };
+
+    // ------------------------------------------------------------ side panel
+    const LABEL = { right: "Right-handed", left: "Left-handed", beginner: "Beginner", regular: "Regular player", experienced: "Experienced" };
+    let ctxName = (store.get(NAME_KEY) || "Player").split(" ")[0];
+    function context(c) {
+      const p = c.profile, t = c.today, r = c.latest_result;
+      const facts = [
+        p && LABEL[p.batting_hand], p && LABEL[p.experience], p?.focus && `Focus: ${p.focus}`,
+      ].filter(Boolean);
+      $("ctx").innerHTML = `
+        <div class="cx-stats">
+          <div><b>L${c.level}</b><span>${esc(c.level_name)}</span></div>
+          <div><b>${c.streak}</b><span>${icon("flame")} day streak</span></div>
+          <div><b>${t.drills_done}/${t.drills_total || 3}</b><span>drills today</span></div>
+        </div>
+        <div class="cx-block"><h3>${icon("users")} Profile</h3>
+          ${facts.length ? `<div class="cx-chips">${facts.map(f => `<span>${esc(f)}</span>`).join("")}</div>`
+            : `<p class="muted small">Add your batting hand, experience and focus so advice fits you.</p>`}
+          <a class="small cx-link" href="profile.html">${p ? "Edit profile" : "Set up profile"} →</a></div>
+        <div class="cx-block"><h3>${icon("target")} What we're working on</h3>
+          ${c.weak_spots.length ? `<ul class="cx-list">${c.weak_spots.map(w => `<li>${esc(w)}</li>`).join("")}</ul>`
+            : `<p class="muted small">No weak spots yet. Upload a photo or clip and I'll spot what to practise.</p>`}</div>
+        ${c.goals.length ? `<div class="cx-block"><h3>${icon("compare")} Active goals</h3><ul class="cx-list">${c.goals.map(g => `<li>${esc(g)}</li>`).join("")}</ul></div>` : ""}
+        <div class="cx-block"><h3>${icon(r?.mode === "video" ? "video" : "camera")} Latest result</h3>
+          ${r ? `<p class="small" style="margin:0">${r.mode === "video" ? `Clip${r.shot ? `: <b>${esc(r.shot)}</b>` : ""}${r.confidence != null ? ` · ${Math.round(r.confidence * 100)}% sure` : ""}`
+              : `Photo${r.landmarks_visible != null ? ` · ${r.landmarks_visible}/33 body points seen` : ""}`} <span class="faint">· ${fmtDay(r.date)}</span></p>`
+            : `<p class="muted small">No analyses yet.</p>`}
+          <a class="small cx-link" href="image.html">New analysis →</a></div>
+        <p class="cx-note faint small">${icon("shield")} I only see the numbers from your results, never your photos or videos.</p>`;
+    }
+
+    (async () => {
+      const d = await api("/api/train/coach");
+      ctxName = d.context.name;
+      context(d.context);
+      if (!d.configured) $("cp-state").textContent = "Not set up yet: add LLM_API_KEY on the server";
+      chat = d.chat;
+      if (chat.length) chat.forEach(m => bubble(m.role, m.text, { old: true }));
+      else welcome(ctxName);
+      const q = new URLSearchParams(location.search).get("q");
+      if (q) { history.replaceState(null, "", "coach.html"); ask(q.slice(0, 500)); }
+    })().catch(e => { toast(e.message, "error"); welcome(ctxName); });
+  </script>
+</body>
+</html>

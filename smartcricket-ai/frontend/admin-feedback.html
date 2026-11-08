@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Player feedback</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+  <link rel="stylesheet" href="css/confirmation.css?v=1">
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <div class="page-head">
+        <div class="reveal"><h1>Player feedback</h1><p class="muted">What players have sent from their Feedback tab. Newest first.</p></div>
+        <div class="reveal" style="position:relative">
+          <span id="sico" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--ink-3)"></span>
+          <input class="plain" id="search" placeholder="Search player or text" style="padding-left:38px;width:250px;max-width:100%">
+        </div>
+      </div>
+
+      <div class="pl-chips reveal" id="chips"></div>
+
+      <div class="card reveal">
+        <div class="card-head"><div><span class="eyebrow-s">Inbox</span><h2 id="list-title">All feedback</h2></div>
+          <div class="seg-tabs" id="tabs" role="tablist">
+            <button type="button" data-f="all" class="on">All</button><button type="button" data-f="new">Unread</button><button type="button" data-f="low">Rated 1–2</button>
+          </div></div>
+        <div class="fb-list" id="list"><p class="muted">Loading…</p></div>
+      </div>
+    </main>
+  </div>
+  <script src="js/dropdown.js?v=1"></script>
+  <script src="js/api.js?v=48"></script>
+  <script src="js/confirmation.js?v=1"></script>
+  <script>
+    requireLogin();
+    sidebar("admin-feedback.html");
+    const $ = id => document.getElementById(id);
+    $("sico").innerHTML = icon("search");
+    revealAll();
+    const CAT = { training: "Drills & plan", coach: "AI Coach", analysis: "Photo & video", app: "Using the app", bug: "Bug", idea: "Idea" };
+    const RATE = ["Poor", "Not great", "OK", "Good", "Great"];
+    let items = [], filter = "all";
+
+    function chips() {
+      const unread = items.filter(f => f.status === "new").length;
+      const avg = items.length ? (items.reduce((s, f) => s + f.rating, 0) / items.length).toFixed(1) : "–";
+      $("chips").innerHTML = [["chat", items.length, "messages"], ["alert", unread, "unread"], ["trophy", avg, "average rating"]]
+        .map(([ic, n, l]) => `<span class="pl-chip">${icon(ic)}<b>${n}</b> ${l}</span>`).join("");
+    }
+
+    function render() {
+      const q = $("search").value.trim().toLowerCase();
+      const list = items.filter(f => (filter === "all" || (filter === "new" ? f.status === "new" : f.rating <= 2))
+        && `${f.player.name} ${f.player.email} ${f.message}`.toLowerCase().includes(q));
+      $("list").innerHTML = list.length ? list.map(f => `
+        <article class="fb-item ${f.status}" data-id="${f.id}">
+          <span class="fb-score ${f.rating >= 4 ? "hi" : f.rating <= 2 ? "lo" : ""}" title="${RATE[f.rating - 1]}">${f.rating}</span>
+          <div style="min-width:0">
+            <div class="fb-meta"><b>${esc(f.player.name)}</b><small>${esc(f.player.email)}</small>
+              <span class="chip info">${esc(CAT[f.category] || f.category)}</span>
+              ${f.status === "new" ? '<span class="chip low">New</span>' : ""}
+              <small>${fmtDate(f.created_at)}</small></div>
+            <p>${esc(f.message)}</p>
+            ${f.tags.length ? `<div class="fbh-tags">${f.tags.map(t => `<span>${esc(t)}</span>`).join("")}</div>` : ""}
+            ${f.reply ? `<div class="fbh-reply"><b>${icon("shield")} Your reply</b><p>${esc(f.reply)}</p><small>${fmtDate(f.replied_at)}</small></div>` : ""}
+            <form class="fb-reply" hidden><textarea class="plain" maxlength="1000" rows="2" placeholder="Reply to ${esc(f.player.name.split(" ")[0])}…">${esc(f.reply || "")}</textarea>
+              <div><button type="button" class="ghost" data-act="cancel">Cancel</button><button type="button" data-act="send">${icon("arrow")} Send reply</button></div></form>
+          </div>
+          <div class="fb-acts">
+            <button type="button" class="ghost" data-act="reply">${icon("chat")} ${f.reply ? "Edit reply" : "Reply"}</button>
+            <button type="button" class="ghost" data-act="toggle">${icon(f.status === "new" ? "check" : "clock")} ${f.status === "new" ? "Mark read" : "Mark unread"}</button>
+            <button type="button" class="danger" data-act="delete" aria-label="Delete feedback">${icon("trash")}</button>
+          </div>
+        </article>`).join("")
+        : `<p class="muted" style="margin:0">${items.length ? "No feedback matches." : "No feedback yet. Players can send it from the Feedback tab in their sidebar."}</p>`;
+    }
+
+    $("list").onclick = async e => {
+      const b = e.target.closest("button[data-act]");
+      if (!b) return;
+      const item = b.closest(".fb-item"), id = +item.dataset.id, f = items.find(x => x.id === id), box = item.querySelector(".fb-reply");
+      if (b.dataset.act === "reply") { box.hidden = false; return box.querySelector("textarea").focus(); }
+      if (b.dataset.act === "cancel") { box.hidden = true; return; }
+      const text = box.querySelector("textarea").value.trim();
+      if (b.dataset.act === "send" && !text) return toast("Write a reply first", "warn");
+      b.disabled = true;
+      try {
+        if (b.dataset.act === "send") {
+          Object.assign(f, await api(`/api/admin/feedback/${id}/reply`, { method: "POST", body: { reply: text } }));
+          toast(`Reply sent to ${f.player.name}`);
+        } else if (b.dataset.act === "toggle") {
+          Object.assign(f, await api(`/api/admin/feedback/${id}`, { method: "POST", body: { status: f.status === "new" ? "read" : "new" } }));
+        } else {
+          const removed = await confirmAction({
+            title: "Delete this feedback?", message: "It will be removed for the player as well.",
+            itemLabel: `${f.player.name}: ${f.message.slice(0, 60)}${f.message.length > 60 ? "…" : ""}`,
+            onConfirm: () => api(`/api/admin/feedback/${id}`, { method: "DELETE" }),
+          });
+          if (!removed) { b.disabled = false; return; }
+          items = items.filter(x => x.id !== id);
+          toast("Feedback deleted", "ok");
+        }
+        chips(); render();
+      } catch (err) { toast(err.message, "error"); b.disabled = false; }
+    };
+    $("tabs").onclick = e => {
+      const b = e.target.closest("button[data-f]");
+      if (!b) return;
+      filter = b.dataset.f;
+      $("tabs").querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+      $("list-title").textContent = b.textContent === "All" ? "All feedback" : `${b.textContent} feedback`;
+      render();
+    };
+    $("search").oninput = render;
+
+    (async () => {
+      items = await api("/api/admin/feedback");
+      chips(); render();
+    })().catch(e => toast(e.message, "error"));
+  </script>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SmartCricket AI: Feedback</title>
+  <link rel="stylesheet" href="css/style.css?v=48">
+</head>
+<body>
+  <div class="layout">
+    <main>
+      <section class="fb-hero reveal">
+        <div class="fbh-text">
+          <span class="th-eyebrow">Feedback</span>
+          <h1>Your voice shapes SmartCricket</h1>
+          <p>Tell the team what's working and what isn't. Every message is read, and replies show up right here.</p>
+        </div>
+        <div class="fbh-stats">
+          <div class="th-stat"><b id="st-sent">0</b><span>Sent</span></div>
+          <div class="th-stat"><b id="st-replies">0</b><span>Replies</span></div>
+        </div>
+      </section>
+
+      <div class="grid split fb-grid" style="margin-top:18px">
+        <div class="card reveal fb-card">
+          <form id="fb-form" novalidate>
+            <div class="fb-step"><span class="fb-num">1</span>
+              <div class="fb-step-body"><h2>How is SmartCricket working for you?</h2>
+                <div class="fb-faces" id="faces" role="radiogroup" aria-label="Overall rating"></div>
+                <p class="fb-face-label" id="face-label" aria-live="polite">Tap a face to rate</p></div></div>
+
+            <div class="fb-step"><span class="fb-num">2</span>
+              <div class="fb-step-body"><h2>What's it about?</h2>
+                <div class="fb-topics" id="topics" role="radiogroup" aria-label="Topic"></div></div></div>
+
+            <div class="fb-step"><span class="fb-num">3</span>
+              <div class="fb-step-body"><h2>Anything that stood out? <small>optional, pick any</small></h2>
+                <div class="fb-tags" id="tags"></div></div></div>
+
+            <div class="fb-step"><span class="fb-num">4</span>
+              <div class="fb-step-body"><h2><label for="fb-text">Tell us more</label></h2>
+                <div class="fb-textwrap">
+                  <textarea class="plain" id="fb-text" rows="5" maxlength="1000" placeholder="What worked, what didn't, what you'd like next…"></textarea>
+                  <div class="fb-textfoot"><span id="fb-hint" class="faint small"></span><small class="faint" id="fb-count">0 / 1000</small></div>
+                </div></div></div>
+
+            <div class="fb-submit">
+              <div class="fb-progress" aria-hidden="true"><i id="fb-bar"></i></div>
+              <button id="fb-send"></button>
+            </div>
+          </form>
+
+          <div class="fb-thanks" id="fb-thanks" hidden>
+            <div class="fb-burst" id="burst"></div>
+            <h2>Thanks, <span id="thanks-name"></span>!</h2>
+            <p class="muted">Your feedback is with the SmartCricket team. If they reply, you'll see it in <b>Your feedback</b>.</p>
+            <button type="button" class="ghost" id="fb-again"></button>
+          </div>
+        </div>
+
+        <div class="card reveal">
+          <div class="card-head"><div><span class="eyebrow-s">History</span><h2>Your feedback</h2></div></div>
+          <div class="fb-history" id="history"><p class="muted">Loading…</p></div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="js/dropdown.js?v=1"></script>
+  <script src="js/api.js?v=48"></script>
+  <script>
+    requireLogin();
+    sidebar("feedback.html");
+    const $ = id => document.getElementById(id);
+    revealAll();
+    const first = (store.get(NAME_KEY) || "Player").split(" ")[0];
+
+    // five faces from frowning to beaming: the mouth curve is the only thing that changes
+    const FACES = [
+      ["Poor", "M8 17q4-4 8 0", "#c8102e"], ["Not great", "M8.5 16.5q3.5-2 7 0", "#e2621b"],
+      ["OK", "M8.5 15.5h7", "#d39b16"], ["Good", "M8.5 14.5q3.5 2.5 7 0", "#3aa35f"], ["Great", "M7.5 14q4.5 5 9 0z", "#0f7a45"],
+    ];
+    const face = ([, mouth]) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><circle cx="8.8" cy="9.5" r=".9" fill="currentColor"/><circle cx="15.2" cy="9.5" r=".9" fill="currentColor"/><path d="${mouth}"/></svg>`;
+    const TOPICS = [
+      ["training", "dumbbell", "Drills & plan"], ["coach", "chat", "AI Coach"], ["analysis", "camera", "Photo & video"],
+      ["app", "home", "Using the app"], ["bug", "alert", "Something broke"], ["idea", "spark", "An idea"],
+    ];
+    const HINTS = {
+      1: "Sorry to hear that. What went wrong, and where?", 2: "What would have made it better?",
+      3: "What would turn this into a great experience?", 4: "Nice! What's working, and what's missing?", 5: "Brilliant! What do you enjoy most?",
+    };
+    const form = { rating: 0, category: "", tags: new Set() };
+
+    $("faces").innerHTML = FACES.map((f, i) => `<button type="button" class="fb-face" role="radio" aria-checked="false" data-v="${i + 1}"
+      style="--c:${f[2]}" aria-label="${i + 1} of 5, ${f[0]}">${face(f)}<small>${f[0]}</small></button>`).join("");
+    $("topics").innerHTML = TOPICS.map(([v, ic, l]) => `<button type="button" class="fb-topic" role="radio" aria-checked="false" data-v="${v}">
+      <span class="fbt-ic">${icon(ic)}</span>${l}</button>`).join("");
+    $("fb-again").innerHTML = `${icon("plus")} Send more feedback`;
+    $("burst").innerHTML = icon("check") + "<i></i>".repeat(8);
+
+    function pick(group, sel, value) {
+      $(group).querySelectorAll(sel).forEach(b => { const on = b.dataset.v === String(value); b.classList.toggle("on", on); b.setAttribute("aria-checked", on); });
+    }
+    function progress() {
+      const steps = [form.rating > 0, !!form.category, $("fb-text").value.trim().length >= 3];
+      const n = steps.filter(Boolean).length;
+      $("fb-bar").style.width = `${(n / 3) * 100}%`;
+      $("fb-send").innerHTML = n === 3 ? `Send feedback ${icon("arrow")}` : `${3 - n} step${n === 2 ? "" : "s"} to go`;
+      $("fb-send").classList.toggle("ready", n === 3);
+    }
+    $("faces").onclick = e => {
+      const b = e.target.closest(".fb-face"); if (!b) return;
+      form.rating = +b.dataset.v;
+      pick("faces", ".fb-face", form.rating);
+      $("face-label").textContent = FACES[form.rating - 1][0];
+      $("face-label").style.color = FACES[form.rating - 1][2];
+      $("fb-hint").textContent = HINTS[form.rating];
+      $("fb-text").placeholder = HINTS[form.rating];
+      progress();
+    };
+    $("topics").onclick = e => {
+      const b = e.target.closest(".fb-topic"); if (!b) return;
+      form.category = b.dataset.v; pick("topics", ".fb-topic", form.category); progress();
+    };
+    $("tags").onclick = e => {
+      const b = e.target.closest(".fb-tag"); if (!b) return;
+      const t = b.dataset.v;
+      form.tags.has(t) ? form.tags.delete(t) : form.tags.add(t);
+      b.classList.toggle("on", form.tags.has(t)); b.setAttribute("aria-pressed", form.tags.has(t));
+    };
+    $("fb-text").oninput = () => { $("fb-count").textContent = `${$("fb-text").value.length} / 1000`; progress(); };
+
+    function reset() {
+      form.rating = 0; form.category = ""; form.tags.clear();
+      pick("faces", ".fb-face", ""); pick("topics", ".fb-topic", "");
+      $("tags").querySelectorAll(".fb-tag").forEach(b => { b.classList.remove("on"); b.setAttribute("aria-pressed", "false"); });
+      $("fb-text").value = ""; $("fb-count").textContent = "0 / 1000"; $("fb-hint").textContent = "";
+      $("face-label").textContent = "Tap a face to rate"; $("face-label").style.color = "";
+      progress();
+    }
+
+    $("fb-form").onsubmit = async e => {
+      e.preventDefault();
+      const message = $("fb-text").value.trim();
+      if (!form.rating) return toast("Pick a face to rate your experience", "warn");
+      if (!form.category) return toast("Choose what your feedback is about", "warn");
+      if (message.length < 3) { $("fb-text").focus(); return toast("Please write a few words of feedback", "warn"); }
+      $("fb-send").disabled = true; $("fb-send").setAttribute("aria-busy", "true");
+      try {
+        const f = await api("/api/feedback", { method: "POST", body: { rating: form.rating, category: form.category, tags: [...form.tags], message, page: "feedback" } });
+        mine.unshift(f); history();
+        $("thanks-name").textContent = first;
+        $("fb-form").hidden = true; $("fb-thanks").hidden = false;
+        $("fb-again").focus();
+      } catch (err) { toast(err.message, "error"); }
+      finally { $("fb-send").disabled = false; $("fb-send").removeAttribute("aria-busy"); }
+    };
+    $("fb-again").onclick = () => { reset(); $("fb-thanks").hidden = true; $("fb-form").hidden = false; };
+
+    let mine = [];
+    const topicLabel = v => (TOPICS.find(t => t[0] === v) || [, , v])[2];
+    function history() {
+      $("st-sent").textContent = mine.length;
+      $("st-replies").textContent = mine.filter(f => f.reply).length;
+      $("history").innerHTML = mine.length ? mine.map(f => `
+        <article class="fbh-item">
+          <div class="fbh-top"><span class="fbh-face" style="color:${FACES[f.rating - 1][2]}" title="${FACES[f.rating - 1][0]}">${face(FACES[f.rating - 1])}</span>
+            <div><b>${esc(topicLabel(f.category))}</b><small>${fmtDate(f.created_at)}</small></div>
+            <span class="chip ${f.reply ? "ok" : f.status === "read" ? "info" : "off"}">${f.reply ? "Replied" : f.status === "read" ? "Seen" : "Sent"}</span></div>
+          <p>${esc(f.message)}</p>
+          ${f.tags.length ? `<div class="fbh-tags">${f.tags.map(t => `<span>${esc(t)}</span>`).join("")}</div>` : ""}
+          ${f.reply ? `<div class="fbh-reply"><b>${icon("shield")} SmartCricket team</b><p>${esc(f.reply)}</p><small>${fmtDate(f.replied_at)}</small></div>` : ""}
+        </article>`).join("")
+        : `<div class="fbh-empty">${icon("chat")}<p class="muted">Nothing sent yet. Your feedback and any replies from the team will appear here.</p></div>`;
+    }
+
+    progress();
+    (async () => {
+      const d = await api("/api/feedback/mine");
+      $("tags").innerHTML = d.tags.map(t => `<button type="button" class="fb-tag" data-v="${esc(t)}" aria-pressed="false">${esc(t)}</button>`).join("");
+      mine = d.items; history();
+    })().catch(e => toast(e.message, "error"));
+  </script>
+</body>
+</html>

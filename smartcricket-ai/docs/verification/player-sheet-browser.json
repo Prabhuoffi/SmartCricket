@@ -1,0 +1,31 @@
+{
+  "date": "2026-11-06",
+  "context": "Isolated temporary Chrome profile; existing admin aggregate API; read-only application checks.",
+  "repeated_labels_removed": true,
+  "row_click": true,
+  "keyboard_open": true,
+  "escape_close": true,
+  "close_button": true,
+  "backdrop_close": true,
+  "focus_restored": true,
+  "correct_selected_player": true,
+  "empty_search": true,
+  "error_retry": true,
+  "sort_accessibility": true,
+  "desktop": {
+    "client": 1440,
+    "scroll": 1440
+  },
+  "mobile": {
+    "client": 390,
+    "scroll": 390
+  },
+  "mobile_sheet": {
+    "left": 0,
+    "width": 390,
+    "client": 389,
+    "scroll": 389
+  },
+  "private_media_requests": [],
+  "unexpected_script_exceptions": []
+}

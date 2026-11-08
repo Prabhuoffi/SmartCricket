@@ -38,11 +38,8 @@
         <!-- coach -->
         <div class="card reveal coach-card">
           <div id="coach-head"></div>
-          <div class="chat feed-chat" id="feed" tabindex="-1" aria-label="Training coach conversation"></div>
-          <form class="chat-form" id="chat-form">
-            <input class="plain" id="q" placeholder="Ask about your training…" maxlength="500" autocomplete="off">
-            <button id="send" aria-label="Send"></button>
-          </form>
+          <div class="chat feed-chat" id="feed" tabindex="-1" aria-label="Daily check-in with the coach"></div>
+          <div class="coach-cta" id="coach-cta"></div>
         </div>
       </div>
 
@@ -64,9 +61,13 @@
     PracticeGoalFlow.load();
     const $ = id => document.getElementById(id);
     $("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
-    $("send").innerHTML = icon("arrow");
     $("live-free").innerHTML = `${icon("video")} Live mirror`;
-    $("coach-head").innerHTML = coachHeader("Today's training");
+    $("coach-head").innerHTML = coachHeader("Daily check-in");
+    // Free conversation lives on the AI Coach tab; this card keeps the guided check-in.
+    const CTA_QS = ["What should I focus on today?", "Why did you pick these drills for me?", "How do I use my feet against spin?"];
+    $("coach-cta").innerHTML = `<a class="cta-main" href="coach.html"><span class="cta-ic">${icon("chat")}</span>
+        <span><b>Ask the AI Coach anything</b><small>Technique, spin & pace, match nerves, your plan</small></span>${icon("arrow")}</a>
+      <div class="cta-qs">${CTA_QS.map(q => `<a href="coach.html?q=${encodeURIComponent(q)}">${esc(q)}</a>`).join("")}</div>`;
     revealAll();
     const first = (store.get(NAME_KEY) || "Player").split(" ")[0];
     let T, checkinInProgress = false;  // today's payload
@@ -225,20 +226,8 @@
     }
 
     function history() {
-      T.chat.forEach(m => say(m.role, m.role === "coach" ? coachHtml(m.text) : esc(m.text), "old"));
-      if (!T.chat.length) later(() => coachSay("Anything you'd like to ask about your plan or your progress? Type below."), 400);
+      later(() => coachSay("That's today's check-in done. For anything else, from your cover drive to facing spin, open the AI Coach below."), 400);
     }
-
-    $("chat-form").onsubmit = async e => {
-      e.preventDefault();
-      const text = $("q").value.trim();
-      if (!text) return;
-      $("q").value = ""; userSay(text); $("send").disabled = true;
-      const t = typing();
-      try { const r = await api("/api/train/chat", { method: "POST", body: { text } }); t.remove(); coachSay(r.reply); }
-      catch (err) { t.remove(); coachSay(err.message); }
-      $("send").disabled = false;
-    };
 
     // ------------------------------------------------------------ quiz
     function quiz() {

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SmartCricket AI: Shot analysis</title>
   <link rel="stylesheet" href="css/style.css?v=48">
+  <link rel="stylesheet" href="css/confirmation.css?v=1">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
@@ -18,7 +19,7 @@
         </div>
         <div class="reveal" style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="ghost" id="report"></button>
-          <button class="danger" id="delete"></button>
+          <button class="danger" id="delete" disabled></button>
         </div>
       </div>
       <div id="banner"></div>
@@ -121,6 +122,7 @@
   </div>
   <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
+  <script src="js/confirmation.js?v=1"></script>
   <script src="js/coach.js?v=48"></script>
   <script>
     requireLogin();
@@ -142,6 +144,7 @@
     (async () => {
       A = await api(`/api/analyses/${id}`);
       if (A.mode !== "video") return location.replace(`analysis.html?id=${id}`);
+      $("delete").disabled = false;
       S = A.summary;
       $("qstrip").innerHTML = qualityHtml(S.quality);
       if (S.world_seq) {
@@ -354,10 +357,17 @@
       finally { b.disabled = false; b.innerHTML = label; }
     };
     $("delete").onclick = async () => {
-      if (!confirm("Delete this analysis and its video? This cannot be undone.")) return;
+      const deleted = await confirmAction({
+        title: "Delete video analysis?",
+        message: "This will permanently remove the video and its analysis reports.",
+        itemLabel: A.session_label || A.original_name || "Video analysis",
+        confirmLabel: "Delete analysis",
+        onConfirm: () => api(`/api/analyses/${id}`, { method: "DELETE" }),
+      });
+      if (!deleted) return;
       $("delete").disabled = true;
-      try { await api(`/api/analyses/${id}`, { method: "DELETE" }); toast("Analysis deleted", "ok"); setTimeout(() => go("history.html"), 400); }
-      catch (e) { toast(e.message, "error"); $("delete").disabled = false; }
+      toast("Analysis deleted", "ok");
+      setTimeout(() => go("history.html"), 400);
     };
   </script>
 </body>

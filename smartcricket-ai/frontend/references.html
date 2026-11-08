@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SmartCricket AI: Reference clips</title>
   <link rel="stylesheet" href="css/style.css?v=48">
+  <link rel="stylesheet" href="css/confirmation.css?v=1">
 </head>
 <body>
   <div class="layout">
@@ -37,6 +38,7 @@
   </div>
   <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
+  <script src="js/confirmation.js?v=1"></script>
   <script>
     requireLogin();
     sidebar("references.html");
@@ -59,9 +61,18 @@
         : `<p class="muted" style="grid-column:1/-1;margin:0">No reference clips yet. Add one clean example for each shot you want players to compare against.</p>`;
       $("refs").querySelectorAll("img[data-src]").forEach(img => loadImage(img, img.dataset.src));
       $("refs").querySelectorAll("[data-del]").forEach(b => (b.onclick = async () => {
-        if (!confirm("Remove this reference clip?")) return;
-        try { await api(`/api/admin/references/${b.dataset.del}`, { method: "DELETE" }); toast("Reference removed", "ok"); load(); }
-        catch (e) { toast(e.message, "error"); }
+        const reference = refs.find(item => item.id === Number(b.dataset.del));
+        const removed = await confirmAction({
+          title: "Remove reference clip?",
+          message: "Players will no longer be able to compare against this reference.",
+          itemLabel: reference?.label || reference?.shot || "Reference clip",
+          confirmLabel: "Remove clip", busyLabel: "Removing…",
+          onConfirm: () => api(`/api/admin/references/${b.dataset.del}`, { method: "DELETE" }),
+        });
+        if (!removed) return;
+        b.disabled = true;
+        toast("Reference removed", "ok");
+        load().catch(error => toast(error.message, "error"));
       }));
     }
     load().catch(e => toast(e.message, "error"));

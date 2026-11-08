@@ -91,8 +91,15 @@
     sidebar("dashboard.html");
     const $ = id => document.getElementById(id);
     const name = (store.get(NAME_KEY) || "").split(" ")[0];
-    $("hello").innerHTML = `${greeting()}, <span class="grad-text">${esc(name || "player")}</span>`;
-    $("today").textContent = new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+    function updateGreeting() {
+      const now = new Date();
+      $("hello").innerHTML = `${greeting(now)}, <span class="grad-text">${esc(name || "player")}</span>`;
+      $("today").textContent = now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+    }
+    updateGreeting();
+    setInterval(updateGreeting, 60_000);
+    addEventListener("focus", updateGreeting);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) updateGreeting(); });
     $("cta").innerHTML = `${icon("camera")} New photo analysis`;
     $("up-ico").innerHTML = icon("upload");
     revealAll();

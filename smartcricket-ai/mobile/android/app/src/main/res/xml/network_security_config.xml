@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Local Wi-Fi development servers use HTTP. ApiClient only accepts
+         cleartext URLs on localhost and private LAN addresses. -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

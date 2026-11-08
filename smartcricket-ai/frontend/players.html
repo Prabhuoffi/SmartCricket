@@ -5,96 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SmartCricket AI: All players</title>
   <link rel="stylesheet" href="css/style.css?v=48">
+  <link rel="stylesheet" href="css/players.css?v=1">
 </head>
 <body>
   <div class="layout">
-    <main>
+    <main class="players-page">
       <div class="page-head">
-        <div class="reveal"><h1>All players</h1><p class="muted">Every player, their level, streak and how much of their training plan they finish.</p></div>
-        <div class="reveal" style="position:relative">
-          <span id="sico" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:17px;height:17px;color:var(--ink-3)"></span>
-          <input class="plain" id="search" placeholder="Search players" style="padding-left:38px;width:240px">
-        </div>
+        <div><h1>All players</h1><p class="muted">Practice, progress and player activity.</p></div>
+        <label class="players-search"><span id="sico" aria-hidden="true"></span>
+          <input class="plain" id="search" type="search" placeholder="Search players" aria-label="Search players" disabled>
+        </label>
       </div>
 
-      <div class="pl-chips reveal" id="chips"></div>
+      <div class="pl-chips" id="chips"></div>
+      <div class="card players-status" id="players-status" role="status" aria-live="polite">Loading players…</div>
 
-      <div class="card reveal" style="overflow-x:auto">
-        <span class="eyebrow-s">Roster</span><h2 id="roster-title">Players</h2>
-        <table class="data ptable">
+      <section class="card players-roster" id="players-roster" aria-labelledby="roster-title" hidden>
+        <div class="players-roster-head"><div><span class="eyebrow-s">Roster</span><h2 id="roster-title">Players</h2></div><span class="muted small">Select a player to view details</span></div>
+        <div class="players-table-scroll" role="region" aria-label="Player roster; scroll horizontally for more columns" tabindex="0">
+        <table class="data ptable players-table">
+          <colgroup><col class="col-player"><col class="col-analyses"><col class="col-active"><col class="col-level"><col class="col-streak"><col class="col-plan"><col class="col-visible"><col class="col-shot"></colgroup>
           <thead><tr>
-            <th><button data-sort="name">Player</button></th>
-            <th><button data-sort="analyses">Analyses ↓</button></th>
-            <th><button data-sort="last_active">Last active</button></th>
-            <th><button data-sort="level">Level</button></th><th><button data-sort="streak">Streak</button></th>
-            <th><button data-sort="plan_pct">Plan 7d</button></th>
-            <th><button data-sort="avg_visible">Avg visible</button></th><th>Top shot</th>
+            <th scope="col" aria-sort="none"><button type="button" data-sort="name">Player <span class="sort-arrow"></span></button></th>
+            <th scope="col" aria-sort="descending"><button type="button" data-sort="analyses">Analyses <span class="sort-arrow">↓</span></button></th>
+            <th scope="col" aria-sort="none"><button type="button" data-sort="last_active">Last active <span class="sort-arrow"></span></button></th>
+            <th scope="col" aria-sort="none"><button type="button" data-sort="level">Level <span class="sort-arrow"></span></button></th>
+            <th scope="col" aria-sort="none"><button type="button" data-sort="streak">Streak <span class="sort-arrow"></span></button></th>
+            <th scope="col" aria-sort="none"><button type="button" data-sort="plan_pct">Plan · 7d <span class="sort-arrow"></span></button></th>
+            <th scope="col" aria-sort="none"><button type="button" data-sort="avg_visible">Visibility <span class="sort-arrow"></span></button></th><th scope="col">Top shot</th>
           </tr></thead>
           <tbody id="rows"></tbody>
         </table>
-        <div class="note" id="note"></div>
-      </div>
+        </div>
+      </section>
     </main>
   </div>
+  <dialog id="player-sheet" class="player-sheet" aria-labelledby="sheet-title" aria-describedby="sheet-email">
+    <div class="player-sheet-head"><span class="eyebrow-s">Player details</span><button type="button" id="sheet-close" class="player-sheet-close" aria-label="Close player details" autofocus>×</button></div>
+    <div class="player-sheet-body" id="sheet-body"></div>
+  </dialog>
   <script src="js/dropdown.js?v=1"></script>
   <script src="js/api.js?v=48"></script>
-  <script>
-    requireLogin();
-    sidebar("players.html");
-    const $ = id => document.getElementById(id);
-    $("sico").innerHTML = icon("search");
-    $("note").innerHTML = `${icon("shield")} For privacy, this page shows usage numbers only. Players' photos and videos stay private to them.`;
-    revealAll();
-    const COLORS = ["#0f5c3a", "#c8102e", "#1f9d55", "#8f0b20", "#0a3d27", "#b58a3a"];
-    let players = [], sortKey = "analyses", sortDir = -1;
-    const ago = iso => {
-      if (!iso) return "never";
-      const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
-      return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
-    };
-
-    (async () => {
-      const d = await api("/api/admin/overview");
-      players = d.players;
-      const act = players.filter(p => p.last_active && Date.now() - Date.parse(p.last_active) < 7 * 864e5).length;
-      const onPlan = players.filter(p => p.plan_pct != null && p.plan_pct >= 80).length;
-      const atRisk = players.filter(p => !p.last_active || Date.now() - Date.parse(p.last_active) >= 7 * 864e5).length;
-      $("chips").innerHTML = [["users", players.length, "players"], ["flame", act, "active this week"],
-        ["check", onPlan, "finishing 80%+ of drills"], ["alert", atRisk, "inactive 7+ days"]]
-        .map(([ic, n, l]) => `<span class="pl-chip">${icon(ic)}<b>${n}</b> ${l}</span>`).join("");
-      $("roster-title").textContent = `Players (${players.length})`;
-      render();
-    })().catch(e => { document.querySelector("main").insertAdjacentHTML("beforeend", alertHtml("error", e.message)); });
-
-    function render() {
-      const q = $("search").value.trim().toLowerCase();
-      const list = players.filter(p => `${p.name} ${p.email}`.toLowerCase().includes(q)).sort((a, b) => {
-        const x = a[sortKey], y = b[sortKey];
-        if (x == null) return 1; if (y == null) return -1;
-        return (x > y ? 1 : x < y ? -1 : 0) * sortDir;
-      });
-      const max = Math.max(1, ...players.map(p => p.analyses));
-      $("rows").innerHTML = list.length ? list.map((p, i) => `<tr>
-        <td><div class="pname"><span class="pav" style="background:${COLORS[p.id % COLORS.length]}">${esc(p.name.trim()[0] || "?").toUpperCase()}</span>
-          <div><b>${esc(p.name)}</b><small>${esc(p.email)}</small></div></div></td>
-        <td><b>${p.analyses}</b> <small class="faint">${p.photos} photo${p.photos === 1 ? "" : "s"} · ${p.videos} video${p.videos === 1 ? "" : "s"}</small><div class="bar-mini"><i style="width:${(p.analyses / max) * 100}%"></i></div></td>
-        <td>${ago(p.last_active)}</td>
-        <td><span class="chip info">L${p.level} ${esc(p.level_name)}</span><small class="faint" style="display:block;margin-top:4px">${p.xp} XP</small></td>
-        <td>${p.streak ? `<b style="color:#c8102e">${p.streak}</b> day${p.streak === 1 ? "" : "s"}` : '<span class="faint">–</span>'}</td>
-        <td>${p.plan_pct == null ? '<span class="faint">no plan</span>' : `<b>${p.plan_pct}%</b><div class="bar-mini"><i style="width:${p.plan_pct}%"></i></div>`}</td>
-        <td>${p.avg_visible == null ? "–" : `${p.avg_visible} / 33`}</td>
-        <td>${p.top_shot ? esc(p.top_shot) : '<span class="faint">–</span>'}</td></tr>`).join("")
-        : `<tr><td colspan="8" class="muted">${players.length ? "No players match." : "No players have signed up yet."}</td></tr>`;
-    }
-    $("search").oninput = render;
-    document.querySelectorAll("[data-sort]").forEach(b => (b.onclick = () => {
-      const k = b.dataset.sort;
-      sortDir = sortKey === k ? -sortDir : (k === "name" ? 1 : -1);
-      sortKey = k;
-      document.querySelectorAll("[data-sort]").forEach(x => (x.textContent = x.textContent.replace(/ [↑↓]$/, "")));
-      b.textContent += sortDir === 1 ? " ↑" : " ↓";
-      render();
-    }));
-  </script>
+  <script src="js/player-streaks.js?v=1"></script>
+  <script src="js/players.js?v=1"></script>
 </body>
 </html>

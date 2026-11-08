@@ -14,8 +14,9 @@ from sqlalchemy.orm import Session
 
 from . import coach
 from .config import settings
-from .models import (Analysis, DailyLog, LiveSession, Media, PlanDrill, QuizAnswer, Reflection, TrainingChat,
-                     User, WeeklyReport)
+from .models import (Analysis, DailyLog, LiveSession, Media, PlanDrill, PlayerProfile, PracticeGoal, QuizAnswer,
+                     Reflection, TrainingChat, User, WeeklyReport)
+from .serialize import timestamp
 
 
 def today() -> date:
@@ -619,6 +620,27 @@ def player_facts(db: Session, c: Ctx) -> dict:
                         "numbers": dose(d.code, d.difficulty)[1:]} for d in plan],
         "weak_spots": [extra for _, _, extra in weak_spots(c)],
         "this_week": week_stats(c, monday(c.day)),
+    } | personal_facts(db, c)
+
+
+def personal_facts(db: Session, c: Ctx) -> dict:
+    """What makes the coach personal: the player's own stated profile, goals and recent results."""
+    prof = db.get(PlayerProfile, c.user.id)
+    goals = db.scalars(select(PracticeGoal).where(PracticeGoal.user_id == c.user.id, PracticeGoal.status == "active")
+                       .order_by(PracticeGoal.id.desc()).limit(3)).all()
+    quiz = list(c.quiz.values())
+    return {
+        "profile": {"batting_hand": prof.handedness, "experience": prof.experience, "camera_view": prof.camera_view,
+                    "focus": prof.focus, "notes": prof.notes[:300]} if prof else None,
+        "active_goals": [{"title": g.title, "focus_joint": g.focus_joint, "target_deg": g.target_deg,
+                          "due": g.due_date.isoformat() if g.due_date else None} for g in goals],
+        "recent_results": [{"date": a.created_at.date().isoformat(), "mode": a.mode, "shot": a.shot,
+                            "confidence": round(a.confidence, 2) if a.confidence is not None else None,
+                            "landmarks_visible": (a.summary or {}).get("visible"),
+                            "shoulder_line_deg": (a.summary or {}).get("shoulder_line_deg")}
+                           for a in c.analyses[-5:][::-1]],
+        "quiz_answered": len(quiz), "quiz_correct": sum(q.correct for q in quiz),
+        "live_sessions": len(c.live),
     }
 
 
@@ -628,8 +650,21 @@ def chat_reply(db: Session, c: Ctx, text: str) -> str:
     if c.analyses:
         facts["latest_result"] = coach.facts_for(c.analyses[-1])
     history = db.scalars(select(TrainingChat).where(TrainingChat.user_id == c.user.id)
-                         .order_by(TrainingChat.id.desc()).limit(6)).all()[::-1]
+                         .order_by(TrainingChat.id.desc()).limit(coach.HISTORY)).all()[::-1]
     return coach.converse(facts, [(m.role, m.text) for m in history], text, coach.TRAINING_RULES)
+
+
+def coach_context(db: Session, c: Ctx) -> dict:
+    """The player-facing summary of what the coach is told, shown beside the AI Coach chat."""
+    st = status(c)
+    personal = personal_facts(db, c)
+    latest = personal["recent_results"][0] if personal["recent_results"] else None
+    return {"name": c.user.name.split()[0] if c.user.name else "Player",
+            "level": st["level"], "level_name": st["level_name"], "streak": st["streak"], "xp": st["xp"]["total"],
+            "today": st["today"], "profile": personal["profile"],
+            "weak_spots": [why for _, why, _ in weak_spots(c)][:3],
+            "goals": [g["title"] for g in personal["active_goals"]],
+            "latest_result": latest, "analyses": len(c.analyses)}
 
 
 # ---------------------------------------------------------------- admin snapshot
@@ -642,5 +677,14 @@ def snapshot(user: User, db: Session) -> dict:
     lv = level_info(have)
     week = [d for day in {d.day for d in c.drills if c.day - timedelta(days=6) <= d.day <= c.day}
             for d in daily_drills(c, day)]
-    return {"level": lv["level"], "level_name": lv["name"], "streak": cur, "xp": xp(c, days)["total"],
+    # Practice can continue without a new upload. Use the same activity sources
+    # as the streak rather than presenting the last analysis as last activity.
+    instants = [a.created_at for a in c.analyses] + [row.created_at for row in c.logs.values()]
+    instants += [row.done_at for row in c.drills if row.done] + [row.created_at for row in c.live]
+    instants = [value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+                for value in instants if isinstance(value, datetime)]
+    return {"level": lv["level"], "level_name": lv["name"], "streak": cur, "best_streak": best,
+            "last_active": timestamp(max(instants)) if instants else None,
+            "demo_activity": any((row.reason or "").startswith("Demo activity:") for row in c.drills),
+            "xp": xp(c, days)["total"],
             "plan_pct": round(sum(d.done for d in week) / len(week) * 100) if week else None}

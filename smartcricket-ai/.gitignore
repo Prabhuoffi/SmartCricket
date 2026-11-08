@@ -12,3 +12,4 @@ models/*.pt
 LOGIN_DETAILS.txt
 data/certs/
 data/lan.json
+data/backups/

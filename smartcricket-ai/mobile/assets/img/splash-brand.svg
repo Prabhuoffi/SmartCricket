@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 90">
+  <defs>
+    <radialGradient id="ball" cx="38%" cy="32%" r="72%">
+      <stop stop-color="#f04a62"/>
+      <stop offset=".5" stop-color="#c8102e"/>
+      <stop offset="1" stop-color="#6a0614"/>
+    </radialGradient>
+    <radialGradient id="shade" cx="70%" cy="78%" r="60%">
+      <stop stop-opacity=".28"/>
+      <stop offset="1" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <g transform="translate(10 10) scale(1.1)">
+    <circle cx="32" cy="32" r="30" fill="url(#ball)"/>
+    <g fill="none" stroke="#f3e9d2" stroke-linecap="round">
+      <path d="M28.6 2.4Q22.6 32 28.6 61.6M35.4 2.4Q29.4 32 35.4 61.6" stroke-width="1.7"/>
+      <path d="M24.9 6Q18.9 32 24.9 58M39.1 6Q33.1 32 39.1 58" stroke-width="1.5" stroke-dasharray="1.4 2.8"/>
+    </g>
+    <circle cx="32" cy="32" r="30" fill="url(#shade)"/>
+    <ellipse cx="21" cy="17" rx="9" ry="5" transform="rotate(-35 21 17)" fill="#fff" opacity=".28"/>
+  </g>
+  <text x="91" y="40" fill="#fff" font-family="Arial, sans-serif" font-size="27" font-weight="700">SmartCricket AI</text>
+  <text x="92" y="64" fill="#b6bcad" font-family="Arial, sans-serif" font-size="15">Batting analysis &amp; coaching</text>
+</svg>

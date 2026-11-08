@@ -34,6 +34,10 @@ def test_coach_guard():  # UT-12
     assert numbers_grounded("Measured: your left knee is at 128 degrees.", facts)
     assert numbers_grounded("Measured: 83% confident. Try 3 sets of 10.", facts)
     assert not numbers_grounded("Measured: your right knee is at 145 degrees.", facts)
+    # general cricket knowledge may use its own numbers, but only inside a "General tip:" paragraph
+    assert numbers_grounded("Measured: your left knee is at 128 degrees.\n\nGeneral tip: the pitch is 22 yards, "
+                            "and a high elbow near 90 degrees helps the drive.", facts)
+    assert not numbers_grounded("General tip: keep the elbow high.\n\nYour right knee is at 145 degrees.", facts)
 
 
 def test_password_hash():  # UT-13

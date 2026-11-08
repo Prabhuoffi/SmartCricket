@@ -110,6 +110,7 @@ const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // ---------------------------------------------------------------- icons (inline, stroke style)
 const ICON = {
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
   home: '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
   camera: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/>',
   video: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/>',
@@ -173,13 +174,16 @@ const ADMIN_TIPS = [
 // Each role has its own pages. Opening the other role's page sends you to your own home.
 // The server enforces the same split (README.md, Roles); keep both in step.
 const PLAYER_LINKS = [
-  ["dashboard.html", "home", "Dashboard"], ["training.html", "dumbbell", "Training"], ["progress.html", "trophy", "Progress"],
+  ["dashboard.html", "home", "Dashboard"], ["training.html", "dumbbell", "Training"],
+  ["live.html", "video", "Live analysis"], ["coach.html", "chat", "AI Coach"],
+  ["progress.html", "trophy", "Progress"],
   ["image.html", "camera", "Photo analysis"], ["video.html", "video", "Video analysis"], ["history.html", "clock", "History"],
-  ["practice.html", "compare", "Practice goals"], ["showcase.html", "spark", "Demo showcase"],
+  ["practice.html", "compare", "Practice goals"], ["profile.html", "user", "My profile"],
+  ["showcase.html", "play", "Demo showcase"], ["feedback.html", "spark", "Feedback"],
 ];
 const ADMIN_LINKS = [
   ["admin.html", "chart", "Overview"], ["players.html", "users", "All players"], ["models.html", "target", "Model results"],
-  ["references.html", "video", "Reference clips"], ["users.html", "shield", "Users"],
+  ["references.html", "video", "Reference clips"], ["admin-feedback.html", "chat", "Player feedback"], ["users.html", "shield", "Users"],
 ];
 const ADMIN_PAGES = ADMIN_LINKS.map(l => l[0]);
 const homePage = () => (isAdmin() ? "admin.html" : "dashboard.html");
@@ -220,7 +224,7 @@ function sidebar(active) {
 
   const view = location.pathname.split("/").pop();
   const cur = ({ "analysis.html": [active, "doc", "Posture report"], "clip.html": [active, "doc", "Video report"],
-    "live.html": [active, "video", "Live mirror"] })[view] || links.find(l => l[0] === active) || links[0];
+    "live.html": [active, "video", "Live analysis"] })[view] || links.find(l => l[0] === active) || links[0];
   topbar(cur[2], cur[1]);
   if (!isAdmin()) practiceNavigation();
   smoothLinks();
@@ -265,8 +269,8 @@ function topbar(pageLabel, pageIcon) {
     <div class="tb-right">
     <a class="lvl-pill" id="lvl-pill" href="progress.html" title="Your level and XP" hidden></a>
     <button class="icon-btn" id="theme" data-tip="Light / dark" aria-label="Toggle dark mode"></button>
-    <div class="me"><div class="avatar">${esc(name.trim()[0] || "P").toUpperCase()}<i class="online"></i></div>
-      <div class="who"><b>${esc(name)}</b><span class="role">${isAdmin() ? "Admin" : "Player"}</span></div></div>
+    <${isAdmin() ? "div" : 'a href="profile.html" title="My profile"'} class="me"><div class="avatar">${esc(name.trim()[0] || "P").toUpperCase()}<i class="online"></i></div>
+      <div class="who"><b>${esc(name)}</b><span class="role">${isAdmin() ? "Admin" : "Player"}</span></div></${isAdmin() ? "div" : "a"}>
     <button class="icon-btn" id="signout" aria-label="Sign out" data-tip="Sign out">${icon("logout")}</button>
     </div>`;
   document.querySelector("main").prepend(bar);
@@ -378,8 +382,9 @@ function countUp(el, to, { decimals = 0, duration = 1100, suffix = "" } = {}) {
   requestAnimationFrame(step);
 }
 
-function greeting() {
-  const h = new Date().getHours();
+function greeting(now = new Date()) {
+  const h = now.getHours();
+  if (h < 5 || h >= 21) return "Good night";
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 }
 
@@ -394,8 +399,34 @@ function coachHeader(topic) {
     <span class="coach-topic">${esc(topic)}</span></div>`;
 }
 const coachHtml = text => esc(text)
+  .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+  .replace(/^\s*[-*•] /gm, '<span class="tagb">•</span> ')
   .replace(/^(Measured:)/gm, '<span class="tagm">$1</span>')
   .replace(/^(General tip:)/gm, '<span class="tagg">$1</span>');
+
+// Suggested questions under a coach chat, so players can see the range of things they can ask.
+const ASK_IDEAS = {
+  "My training": ["What should I focus on today?", "Why did you pick these drills for me?", "How am I doing this week?",
+    "What are my weak spots right now?", "How do I reach the next level faster?"],
+  "Technique": ["How do I play a perfect cover drive?", "How should my front foot move to a full ball?",
+    "How do I keep my head still at contact?", "What is a good backlift and why does it matter?", "How do I play the pull shot safely?"],
+  "Spin & pace": ["How do I use my feet against spin?", "How do I face fast short-pitched bowling?",
+    "How do I pick the length early?", "How do I play swing bowling?", "When should I sweep?"],
+  "Match & mind": ["How do I build an innings in a match?", "How do I deal with nerves before batting?",
+    "How do I rotate the strike?", "What warm-up should I do before a match?", "How should I practise at home without a net?"],
+};
+function askChips(el, onAsk, { title = "Ask me anything about cricket", ideas = ASK_IDEAS } = {}) {
+  const groups = Object.keys(ideas);
+  let group = groups[0];
+  const draw = () => {
+    el.innerHTML = `<div class="ask-head">${icon("spark")} ${esc(title)}</div><div class="ask-tabs" role="tablist" aria-label="Question ideas">${groups.map(g =>
+      `<button type="button" role="tab" aria-selected="${g === group}" class="${g === group ? "on" : ""}" data-g="${esc(g)}">${esc(g)}</button>`).join("")}</div>
+      <div class="ask-list">${ideas[group].map(q => `<button type="button" class="ask-q">${esc(q)}</button>`).join("")}</div>`;
+    el.querySelectorAll("[data-g]").forEach(b => (b.onclick = () => { group = b.dataset.g; draw(); }));
+    el.querySelectorAll(".ask-q").forEach(b => (b.onclick = () => onAsk(b.textContent)));
+  };
+  draw();
+}
 
 // ---------------------------------------------------------------- input quality strip (photo and clip results)
 function qualityHtml(q) {
