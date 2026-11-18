@@ -136,10 +136,14 @@ class CoachBusy(Exception):
     """Every model tried was overloaded or rate-limited."""
 
 
-def _gemini(model: str, body: dict) -> str:
+class CoachAuthError(Exception):
+    """The provider rejected the configured API key."""
+
+
+def _gemini(model: str, body: dict, timeout: float = 15) -> str:
     # The key goes in a header, never in the URL, so it cannot end up in logs or error messages.
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-    r = httpx.post(url, json=body, headers={"x-goog-api-key": settings.llm_api_key}, timeout=25)
+    r = httpx.post(url, json=body, headers={"x-goog-api-key": settings.llm_api_key}, timeout=timeout)
     r.raise_for_status()
     parts = r.json()["candidates"][0]["content"]["parts"]
     return "".join(p.get("text", "") for p in parts if not p.get("thought")).strip()
@@ -154,20 +158,22 @@ def _call(messages: list[dict]) -> str:
                                      "thinkingConfig": {"thinkingBudget": 0}}}
         models = [settings.llm_model] + [m.strip() for m in settings.llm_fallback_models.split(",")
                                          if m.strip() and m.strip() != settings.llm_model]
-        # Busy (429/503) or slow models: retry once, then move on to the next model.
+        # A busy model should not hold the chat open while a fallback can answer.
+        deadline = time.monotonic() + 35
         for model in models:
-            for attempt in range(2):
-                try:
-                    return _gemini(model, body)
-                except httpx.TimeoutException:
-                    break
-                except httpx.HTTPStatusError as e:
-                    if e.response.status_code in (429, 500, 503):
-                        time.sleep(1.5 * (attempt + 1))
-                        continue
-                    if e.response.status_code == 404:  # model retired or not available to this key
-                        break
-                    raise
+            remaining = deadline - time.monotonic()
+            if remaining <= 1:
+                break
+            try:
+                return _gemini(model, body, timeout=min(12, remaining))
+            except httpx.TimeoutException:
+                continue
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code in (401, 403):
+                    raise CoachAuthError() from e
+                if e.response.status_code in (404, 429, 500, 503):
+                    continue
+                raise
         raise CoachBusy()
     r = httpx.post("https://api.openai.com/v1/chat/completions",
                    headers={"Authorization": f"Bearer {settings.llm_api_key}"},

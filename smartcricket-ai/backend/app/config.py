@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_model: str = "gpt-4o-mini"
     # Gemini models tried in order when the main one is busy
-    llm_fallback_models: str = "gemini-3.8-flash,gemini-flash-latest,gemini-3.1-flash-lite"
+    llm_fallback_models: str = "gemini-3.1-flash-lite,gemini-flash-latest,gemini-3.8-flash"
 
     upload_dir: Path = ROOT / "data" / "uploads"
     output_dir: Path = ROOT / "data" / "outputs"

@@ -264,6 +264,8 @@ async def chat(body: Message, user: User = Depends(current_user), db: Session = 
     except coach.CoachBusy:
         raise HTTPException(503, "The AI Coach is busy right now (the Gemini servers are overloaded). "
                                  "Please try again in a minute.")
+    except coach.CoachAuthError:
+        raise HTTPException(503, "The AI provider rejected the configured key. Check LLM_API_KEY on the server.")
     except Exception:
         log.exception("training chat failed user=%s", user.id)
         raise HTTPException(502, "The coach service is not responding, please try again later")

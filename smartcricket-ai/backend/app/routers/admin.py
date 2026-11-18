@@ -22,7 +22,7 @@ from ..models import Analysis, Media, ModelEvaluation, ReferenceClip, User
 from ..serialize import timestamp
 from ..storage import save_upload
 from ..video import LABELS, video_service
-from .video import reference_out
+from .video import reference_frame_dir, reference_out
 
 router = APIRouter(prefix="/api", tags=["admin"])
 log = logging.getLogger("smartcricket")
@@ -108,8 +108,8 @@ async def add_reference(file: UploadFile, shot: str = Form(...), label: str | No
         path.unlink(missing_ok=True)
         shutil.rmtree(out_dir, ignore_errors=True)
         raise HTTPException(422, "No body was detected in this clip, so it cannot be used as a reference")
-    ref = ReferenceClip(shot=shot, file_path=str(path), added_by=admin.id,
-                        angles={"seq": res["angles"], "landmarks": res["landmarks"], "dir": str(out_dir),
+    ref = ReferenceClip(shot=shot, file_path=path.name, added_by=admin.id,
+                        angles={"seq": res["angles"], "landmarks": res["landmarks"], "dir": out_dir.name,
                                 "label": (label or "").strip() or f"{shot} reference"})
     db.add(ref)
     db.commit()
@@ -123,12 +123,15 @@ def delete_reference(ref_id: int, _: User = Depends(current_admin), db: Session 
         raise HTTPException(404, "Reference clip not found")
     for a in db.scalars(select(Analysis).where(Analysis.reference_id == ref_id)):
         a.reference_id = None
-    paths = (ref.file_path, ref.angles.get("dir"))
+    upload_name = Path(ref.file_path).name
+    upload = settings.upload_dir / upload_name if upload_name else None
+    frames = reference_frame_dir(ref)
     db.delete(ref)
     db.commit()
-    Path(paths[0]).unlink(missing_ok=True)
-    if paths[1]:
-        shutil.rmtree(paths[1], ignore_errors=True)
+    if upload and upload.is_file():
+        upload.unlink()
+    if frames and frames.is_dir():
+        shutil.rmtree(frames)
 
 
 @router.get("/admin/users")

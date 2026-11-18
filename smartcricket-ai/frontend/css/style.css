@@ -85,7 +85,8 @@ code { font-size: .88em; background: var(--brand-soft); padding: 2px 6px; border
 .guided-copy > p { color: var(--ink-2); font-size: .9rem; margin: 0; max-width: 650px; }
 .guided-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; margin-top: 20px; }
 .guided-actions .btn { white-space: normal; text-align: left; }
-.guided-secondary { color: var(--ink-2); font-size: .82rem; font-weight: 700; }
+.guided-secondary { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: .82rem; font-weight: 700; }
+.guided-secondary svg { width: 16px; height: 16px; flex: none; }
 .guided-evidence { border-left: 1px solid var(--border); padding-left: 24px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
 .guided-evidence > span { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; color: var(--pitch); background: var(--pitch-soft); margin-bottom: 12px; }
 .guided-evidence svg { width: 22px; height: 22px; }
@@ -104,6 +105,7 @@ code { font-size: .88em; background: var(--brand-soft); padding: 2px 6px; border
   .guided-session { grid-template-columns: minmax(0, 1fr); gap: 18px; }
   .guided-evidence { border-left: 0; border-top: 1px solid var(--border); padding: 16px 0 0; }
   .guided-evidence > span { display: none; }
+  .report-next .guided-actions { width: 100%; justify-content: flex-start; }
 }
 
 /* ---------------------------------------------------------------- layout */
@@ -423,6 +425,7 @@ table.data td { padding: 12px; border-top: 1px solid var(--border); }
 .typing { display: inline-flex; gap: 4px; padding: 14px 16px; }
 .typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); animation: typing 1.2s infinite; }
 .typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+.typing small { margin-left: 8px; color: var(--ink-3); }
 .suggest { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 12px; }
 .suggest button { background: var(--brand-soft); color: var(--brand); box-shadow: none; padding: 7px 12px; font-size: .82rem; border-radius: 99px; }
 .suggest button:hover { background: var(--brand); color: #fff; }

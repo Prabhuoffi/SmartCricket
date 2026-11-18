@@ -31,6 +31,7 @@ function initCoach(analysisId, messages, greetingText, questions) {
     t.innerHTML = "<i></i><i></i><i></i>";
     $("chat").append(t);
     $("chat").scrollTop = $("chat").scrollHeight;
+    const waiting = setTimeout(() => { t.innerHTML = "<i></i><i></i><i></i><small>Still working on your answer…</small>"; }, 8000);
     try {
       const r = await api(`/api/coach/${analysisId}`, { method: "POST", body: { text } });
       t.remove();
@@ -39,6 +40,7 @@ function initCoach(analysisId, messages, greetingText, questions) {
       t.remove();
       addMsg("coach", err.message);
     } finally {
+      clearTimeout(waiting);
       $("send").disabled = false;
       suggestions();
     }

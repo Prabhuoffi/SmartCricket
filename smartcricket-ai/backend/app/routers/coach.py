@@ -30,6 +30,8 @@ async def ask(analysis_id: int, q: Question, user: User = Depends(current_user),
     except coach.CoachBusy:
         raise HTTPException(503, "The AI Coach is busy right now (the Gemini servers are overloaded). "
                                  "Please try again in a minute.")
+    except coach.CoachAuthError:
+        raise HTTPException(503, "The AI provider rejected the configured key. Check LLM_API_KEY on the server.")
     except Exception:
         log.exception("coach call failed analysis=%s", analysis_id)
         raise HTTPException(502, "The coach service is not responding, please try again later")

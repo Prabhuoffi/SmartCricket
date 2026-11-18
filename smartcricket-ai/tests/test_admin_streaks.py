@@ -10,7 +10,8 @@ from backend.app.models import Analysis, DailyLog, Media, PlanDrill, User
 from backend.app.routers.admin import overview
 from scripts.refresh_demo_streaks import refresh
 
-NOW = datetime(2026, 11, 6, 16, 0, tzinfo=timezone.utc)
+# Relative to the real clock: admin "active this week" compares against datetime.now().
+NOW = datetime.now(timezone.utc).replace(microsecond=0)
 DAY = NOW.astimezone().date()
 
 

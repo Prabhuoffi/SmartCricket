@@ -1,5 +1,6 @@
 """Video analysis, reference comparison and reference clip frames (FR-6 to FR-13)."""
 import logging
+import re
 import shutil
 import time
 import uuid
@@ -166,7 +167,15 @@ def references(shot: str | None = None, _: User = Depends(current_user), db: Ses
 
 def reference_out(r: ReferenceClip) -> dict:
     return {"id": r.id, "shot": r.shot, "label": r.angles.get("label") or r.shot,
-            "frames": len(r.angles.get("seq", [])), "thumb": f"/api/references/{r.id}/frame/7"}
+            "frames": len(r.angles.get("seq", [])), "thumb": f"/api/references/{r.id}/frame/7?v=2"}
+
+
+def reference_frame_dir(r: ReferenceClip) -> Path | None:
+    """Find saved frames after the project directory has been moved."""
+    name = Path((r.angles or {}).get("dir") or "").name
+    if not re.fullmatch(r"ref_[0-9a-f]{32}", name):
+        return None
+    return settings.output_dir / name
 
 
 @router.get("/references/{ref_id}/pose")
@@ -177,8 +186,9 @@ def reference_pose(ref_id: int, _: User = Depends(current_player), db: Session =
     if r is None:
         raise HTTPException(404, "Reference clip not found")
     size = None
-    first = Path(r.angles.get("dir", "")) / "frame_00.jpg"
-    if first.exists():
+    frame_dir = reference_frame_dir(r)
+    first = frame_dir / "frame_00.jpg" if frame_dir else None
+    if first and first.is_file():
         import cv2
         img = cv2.imread(str(first))
         size = [img.shape[1], img.shape[0]] if img is not None else None
@@ -191,7 +201,8 @@ def reference_frame(ref_id: int, t: int, _: User = Depends(current_user), db: Se
     r = db.get(ReferenceClip, ref_id)
     if r is None:
         raise HTTPException(404, "Reference clip not found")
-    p = Path(r.angles["dir"]) / f"frame_{t:02d}.jpg"
-    if not p.exists():
+    frame_dir = reference_frame_dir(r)
+    p = frame_dir / f"frame_{t:02d}.jpg" if frame_dir and 0 <= t < len((r.angles or {}).get("seq", [])) else None
+    if p is None or not p.is_file():
         raise HTTPException(404, "Frame not found")
-    return FileResponse(p)
+    return FileResponse(p, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
